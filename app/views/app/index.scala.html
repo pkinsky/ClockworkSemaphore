@@ -1,0 +1,18 @@
+@layout("Hello Play Akka Angular WebSocket") {
+<div class="jumbotron" ng-controller="AppCtrl">
+    <form class="form-inline">
+        <button ng-click="connect()" class="btn">Connect</button>
+        <input type="text" ng-model="text" placeholder="input message" class="message"></input>
+        <button ng-click="send()" class="btn">send</button>
+    </form>
+
+    <br>
+
+    <table class="table table-striped">
+        <tr ng-repeat="message in messages">
+            <td>{{message}}</td>
+        </tr>
+    </table>
+    </body>
+</div>
+}
