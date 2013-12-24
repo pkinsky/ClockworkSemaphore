@@ -4,8 +4,6 @@
 
 # Tasks
 GET     /                           controllers.AppController.index
-GET     /start                      controllers.AppController.start
-GET     /stop                       controllers.AppController.stop
 GET     /websocket/                 controllers.AppController.indexWS
 
 

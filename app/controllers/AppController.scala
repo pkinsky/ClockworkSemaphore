@@ -15,7 +15,6 @@ import actors._
 import akka.actor.Props
 import akka.pattern.ask
 import akka.util.Timeout
-import actors.UpdateTime
 import actors.StartSocket
 import actors.SocketClosed
 import scala.util.Random
@@ -55,7 +54,7 @@ object AppController extends Controller with Secured{
           // connection is closed from the client
 
           val c = Iteratee.foreach[JsValue]{
-            case JsObject(Seq(("topic", JsString(topic)), ("msg", JsString(msg)))) =>  timerActor ! Msg(userId, topic, msg)
+            case JsObject(Seq(("topic", JsString(topic)), ("msg", JsString(msg)))) => timerActor ! Msg(userId, topic, msg)
 
             case js =>
             println(s"received jsvalue $js")
@@ -71,26 +70,12 @@ object AppController extends Controller with Secured{
       }
   }
 
-  def start = withAuth {
-    userId => implicit request =>
-      timerActor ! Start(userId)
-      Ok("")
-  }
-
-
-  def stop = withAuth {
-    userId => implicit request =>
-      timerActor ! Stop(userId)
-      Ok("")
-  }
 
   def javascriptRoutes = Action {
     implicit request =>
       Ok(
         Routes.javascriptRouter("jsRoutes")(
-          routes.javascript.AppController.indexWS,
-          routes.javascript.AppController.start,
-          routes.javascript.AppController.stop
+          routes.javascript.AppController.indexWS
         )
       ).as("text/javascript")
   }

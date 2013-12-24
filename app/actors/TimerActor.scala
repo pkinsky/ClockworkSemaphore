@@ -9,15 +9,9 @@ import play.api.libs.iteratee.{Concurrent, Enumerator}
 
 import play.api.libs.iteratee.Concurrent.Channel
 import play.api.Logger
-import play.api.libs.concurrent.Execution.Implicits._
-
-import scala.concurrent.duration._
 
 
 class TimerActor extends Actor {
-
-  // crate a scheduler to send a message to this actor every socket
-  val cancellable = context.system.scheduler.schedule(0 second, 1 second, self, UpdateTime())
 
   case class UserChannel(userId: Int, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
@@ -27,10 +21,7 @@ class TimerActor extends Actor {
   type Topic = String
 
   // this map relate every user with his UserChannel
-  var webSockets = Map[User, UserChannel]()
-
-  // this map relate every user with his current time
-  var usersTimes = Map[User, Int]()
+  var webSockets: Map[User, UserChannel] = Map.empty
 
   //subscriptions
   var subscriptions: Map[User, Topic] = Map.empty
@@ -46,7 +37,6 @@ class TimerActor extends Actor {
       // enumerator, that allow to create WebSocket or Streams around that enumerator and
       // write data inside that using its related Channel
       val userChannel: UserChannel = webSockets.get(userId) getOrElse {
-        self ! Start(userId) //actors are sequential, no race condition here
         val broadcast: (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
         UserChannel(userId, 0, broadcast._1, broadcast._2)
       }
@@ -65,41 +55,21 @@ class TimerActor extends Actor {
       // this will be used for create the WebSocket
       sender ! userChannel.enumerator
 
-    case UpdateTime() =>
 
-      // increase the current time for every user,
-      // and send current time to the user,
-      usersTimes.foreach {
-        case (userId, millis) =>
-          usersTimes += (userId -> (millis + 1000))
-
-          val json = Map("data" -> toJson(millis))
-
-          println(s"sending $json")
-
-          // writing data to tha channel,
-          // will send data to all WebSocket opened form every user
-          webSockets.get(userId).get.channel push Json.toJson(json)
-      }
+    case Msg(userId, topic, msg) => {
+      //println(s"msg: ${Msg(userId, topic, msg)}")
 
 
-    case Msg(uid, topic, msg) => println(s"msg: ${Msg(uid, topic, msg)}")
 
+      webSockets(userId).channel push Json.toJson(Map("msg" -> Map("topic" -> topic, "msg" -> msg)))
+    }
 
-    case Start(userId) =>
-      usersTimes += (userId -> 0)
-
-    case Stop(userId) =>
-      removeUserTimer(userId)
-      
-      val json = Map("data" -> toJson(0))
-      webSockets.get(userId).get.channel push Json.toJson(json)
 
     case SocketClosed(userId) =>
 
       log debug s"closed socket for $userId"
 
-      val userChannel = webSockets.get(userId).get
+      val userChannel = webSockets(userId)
 
       if (userChannel.channelsCount > 1) {
         userChannel.channelsCount = userChannel.channelsCount - 1
@@ -107,13 +77,11 @@ class TimerActor extends Actor {
         log debug s"channel for user : $userId count : ${userChannel.channelsCount}"
       } else {
         removeUserChannel(userId)
-        removeUserTimer(userId)
-        log debug s"removed channel and timer for $userId"
+        log debug s"removed channel for $userId"
       }
 
   }
 
-  def removeUserTimer(userId: Int) = usersTimes -= userId
   def removeUserChannel(userId: Int) = webSockets -= userId
 
 }
@@ -124,12 +92,6 @@ sealed trait SocketMessage
 case class StartSocket(userId: Int) extends SocketMessage
 
 case class SocketClosed(userId: Int) extends SocketMessage
-
-case class UpdateTime() extends SocketMessage
-
-case class Start(userId: Int) extends SocketMessage
-
-case class Stop(userId: Int) extends SocketMessage
 
 case class Msg(uid: Int, topic: String, msg: String)
 
