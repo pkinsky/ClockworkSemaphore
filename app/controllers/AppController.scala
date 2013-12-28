@@ -20,6 +20,7 @@ import actors.SocketClosed
 import scala.util.Random
 import play.api.Routes
 
+
 /**
  * User: Luigi Antonini
  * Date: 17/06/13
@@ -27,12 +28,14 @@ import play.api.Routes
  */
 object AppController extends Controller with Secured{
 
+
   def index = withAuth {
-    implicit request => userId =>
-      Ok(views.html.app.index())
+    implicit request => userId => {
+        Ok(views.html.app.index())
+    }
   }
 
-  val timerActor = Akka.system.actorOf(Props[TimerActor])
+  val timerActor = Akka.system.actorOf(Props[SocketActor])
 
   /**
    * This function creates a WebSocket using the
@@ -54,10 +57,11 @@ object AppController extends Controller with Secured{
           // connection is closed from the client
 
           val c = Iteratee.foreach[JsValue]{
-            case JsObject(Seq(("topic", JsString(topic)), ("msg", JsString(msg)))) => timerActor ! Msg(userId, topic, msg)
+            case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
+                timerActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
 
             case js =>
-            println(s"received jsvalue $js")
+                println(s"received jsvalue $js")
 
           }
 
@@ -69,7 +73,6 @@ object AppController extends Controller with Secured{
           (it, enumerator.asInstanceOf[Enumerator[JsValue]])
       }
   }
-
 
   def javascriptRoutes = Action {
     implicit request =>
@@ -85,11 +88,11 @@ object AppController extends Controller with Secured{
 trait Secured {
   def username(request: RequestHeader) = {
     //verify or create session, this should be a real login
-    request.session.get(Security.username) 
+    request.session.get(Security.username)
   }
 
   /**
-   * When user not have a session, this function create a 
+   * When user not have a session, this function create a
    * random userId and reload index page
    */
   def unauthF(request: RequestHeader) = {
@@ -110,11 +113,11 @@ trait Secured {
   }
 
   /**
-   * This function provide a basic authentication for 
+   * This function provide a basic authentication for
    * WebSocket, lekely withAuth function try to retrieve the
    * the username form the session, and call f() funcion if find it,
    * or create an error Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])])
-   * if username is none  
+   * if username is none
    */
   def withAuthWS(f: => Int => Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])]): WebSocket[JsValue] = {
 

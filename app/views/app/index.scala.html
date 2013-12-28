@@ -2,8 +2,8 @@
 <div class="jumbotron" ng-controller="AppCtrl">
     <form class="form-inline">
         <button ng-click="connect()" class="btn">Connect</button>
-        <input type="text" ng-model="text" placeholder="input message" class="message"></input>
-        <button ng-click="send()" class="btn">send</button>
+        <input type="text" ng-model="text" placeholder="input message" onkeydown="if (event.keyCode == 13) document.getElementById('btnsend').click()" class="message"></input>
+        <button ng-click="send()" class="btn" id="btnsend">send</button>
     </form>
 
     <br>
@@ -13,6 +13,13 @@
             <td>{{message}}</td>
         </tr>
     </table>
+
+    <table class="table table-striped">
+        <tr ng-repeat="trend in trending">
+            <td>{{trend}}</td>
+        </tr>
+    </table>
+
     </body>
 </div>
 }
