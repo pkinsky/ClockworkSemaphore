@@ -89,7 +89,7 @@ class SocketActor extends Actor {
 
       //update trending
       trending = topics.foldLeft(trending)( (t, topic) => t.updated(topic, t(topic) + 1))
-
+      /*
       redis.pipelined { p =>
         topics.foreach{ t =>
             p.hIncrBy("trending")(t, 1)
@@ -101,17 +101,18 @@ class SocketActor extends Actor {
         p.lRange( s"tweets.$userId", 0, -1 ).onComplete(println(_))
         p.hGetAll( "trending" ).onComplete(println(_))
 
-      }
-
-
-
-      redis
+      }  */
 
       //this is not efficient. Should keep running tally in redis
-      val popular = trending.toList.sortBy{case(k, v) => v}.take(5).toMap
+      val popular = trending.toList.sortBy{case(k, v) => -v}.take(5)
+          .map{case (k, v) => Trend(k, v)}
 
+      println(s"trending => $trending, popular => $popular")
 
-      webSockets(userId).channel push Update(Some(Msg(userId, topics, msg)), Some(popular).filterNot(_.isEmpty).map(Trending)).asJson
+      webSockets(userId).channel push Update(
+            Some(Msg(userId, topics, msg)),
+            Some(popular).filterNot(_.isEmpty)
+          ).asJson
     }
 
 
@@ -155,31 +156,15 @@ case class Msg(userId: Int, topics: Set[String], msg: String) extends SocketMess
   }
 }
 
-case class Trending(trending: Map[String, Long]) extends JsonMessage {
-    def asJson = {
-      implicit val format = Json.format[Trending]
-      Json.toJson(this)
-    }
 
-}
+case class Trend(name: String, count: Long)
 
-case class Update(msg: Option[Msg], trending: Option[Trending]) extends JsonMessage {
+case class Update(msg: Option[Msg], trending: Option[Seq[Trend]]) extends JsonMessage {
   def asJson = {
-    implicit val format1 = Json.format[Trending]
+    implicit val format1 = Json.format[Trend]
     implicit val format2 = Json.format[Msg]
-    implicit val format3 = Json.format[Update]
+    implicit val format4 = Json.format[Update]
+
     Json.toJson(this)
   }
 }
-
-
-/*
-    implicit val format = new Writes[Update]{
-      def writes(o: Update): JsValue = {
-         JsObject(Seq(
-             msg.
-
-         ))
-      }
-    }
-    */

@@ -37,7 +37,17 @@ app.factory('ChatService', function() {
 
 
 function AppCtrl($scope, ChatService) {
+
   $scope.messages = [];
+
+    $scope.activeFilter = function (message) {
+        return _.some(message.topics, function(topic){
+                return $scope.activeTopics[topic]
+            }
+        );
+    };
+
+  $scope.activeTopics = {};
 
   $scope.trending = [];
 
@@ -47,11 +57,24 @@ function AppCtrl($scope, ChatService) {
     var actual = jQuery.parseJSON(message)
 
     if ('msg' in actual){
-        $scope.messages.push((actual['msg']));
+        var msg = actual['msg']
+        msg['show'] = true; //will show messages pushed to ignored topics
+        $scope.messages.push((msg));
     }
 
     if ('trending' in actual){
-         $scope.trending = actual['trending'];
+        var trending = actual['trending']
+        console.log(trending);
+        trending.forEach(function(t) {
+            if (t.name in $scope.activeTopics){
+                console.log("pre-existing")
+            } else {
+               $scope.activeTopics[t.name] = true;
+            }
+          });
+
+
+        $scope.trending = trending;
     }
 
     $scope.$apply();
@@ -60,6 +83,13 @@ function AppCtrl($scope, ChatService) {
   $scope.connect = function() {
     ChatService.connect();
   }
+
+  $scope.toggleActive = function(trend){
+    $scope.activeTopics[trend.name] = ! $scope.activeTopics[trend.name]
+  }
+
+  //need function to go over all messages, match with topics, find at least one active topic if exists
+
 
   $scope.send = function() {
     var topics = $scope.text.split(" ");

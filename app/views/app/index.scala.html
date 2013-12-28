@@ -1,24 +1,30 @@
 @layout("Hello Play Akka Angular WebSocket") {
 <div class="jumbotron" ng-controller="AppCtrl">
-    <form class="form-inline">
-        <button ng-click="connect()" class="btn">Connect</button>
-        <input type="text" ng-model="text" placeholder="input message" onkeydown="if (event.keyCode == 13) document.getElementById('btnsend').click()" class="message"></input>
-        <button ng-click="send()" class="btn" id="btnsend">send</button>
+
+    <form class="form-inline" ng-submit="send()">
+        <input type="text" ng-model="text" placeholder="input message" class="message"></input>
     </form>
 
     <br>
 
     <table class="table table-striped">
-        <tr ng-repeat="message in messages">
-            <td>{{message}}</td>
+        <tr ng-repeat="message in messages | filter:activeFilter">
+            <td>{{message.userId}} => {{message.msg}}</td>
         </tr>
     </table>
 
-    <table class="table table-striped">
-        <tr ng-repeat="trend in trending">
-            <td>{{trend}}</td>
-        </tr>
-    </table>
+
+
+
+
+    <ul style="list-style:none;">
+        <li ng-repeat="trend in trending" ng-click="toggleActive(trend)">
+            <i class="fa fa-square" ng-if="!activeTopics[trend.name]"></i>
+            <i class="fa fa-check-square" ng-if="activeTopics[trend.name]"></i>
+            {{trend.name}} : {{trend.count}}
+        </li>
+    </ul>
+
 
     </body>
 </div>
