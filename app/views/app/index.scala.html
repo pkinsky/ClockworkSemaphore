@@ -1,35 +1,37 @@
 @layout("Hello Play Akka Angular WebSocket") {
-<br>
-<br>
 <div class="container" ng-controller="AppCtrl">
 
-    <form class="form-inline" ng-submit="send()">
-        <i class="fa fa-quote-left fa-inverse quotes"></i>
-        <input type="text" ng-model="text" placeholder="input message" class="message"></input>
-        <i class="fa fa-quote-right fa-inverse quotes"></i>
-    </form>
 
-    <br>
+    <div class="row">
+        <div class="col-md-3 col-xs-3">
+            <div class="list-group">
+                <a ng-repeat="trend in trending" ng-click="toggleActive(trend)" class="list-group-item">
+                    <i class="fa fa-circle-o" ng-if="!activeTopics[trend.name]"></i>
+                    <i class="fa fa-dot-circle-o" ng-if="activeTopics[trend.name]"></i>
+                    &nbsp;
+                    {{trend.name}}
+                    <span class="badge">{{trend.count}}</span>
+                </a>
+            </div>
+        </div>
 
-    <table class="table table-striped">
-        <tr ng-repeat="message in messages | filter:activeFilter">
-            <td>{{message.userId}} => {{message.msg}}</td>
-        </tr>
-    </table>
-
-
-
-
-    <div class="col-xs-6 col-sm-3 sidebar-offcanvas" id="sidebar" role="navigation">
-        <div class="list-group">
-            <a ng-repeat="trend in trending" ng-click="toggleActive(trend)" class="list-group-item">
-                <i class="fa fa-square" ng-if="!activeTopics[trend.name]"></i>
-                <i class="fa fa-check-square" ng-if="activeTopics[trend.name]"></i>
-                {{trend.name}}
-                <span class="badge">{{trend.count}}</span>
-            </a>
+        <div class="col-md-8 col-xs-8">
+            <form class="form-inline" ng-submit="send()">
+                <i class="fa fa-quote-left fa-2x quotes"></i>
+                &nbsp;
+                <input type="text" ng-model="text" placeholder="input message" class="message" id="tweeter"></input>
+                &nbsp;
+                <i class="fa fa-quote-right fa-2x quotes"></i>
+            </form>
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item" ng-repeat="message in messages | filter:activeFilter">
+                    <td>{{message.userId}} => {{message.msg}}</td>
+                </li>
+            </ul>
         </div>
     </div>
+
 
 </div>
 }
