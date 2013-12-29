@@ -1,8 +1,12 @@
 @layout("Hello Play Akka Angular WebSocket") {
-<div class="jumbotron" ng-controller="AppCtrl">
+<br>
+<br>
+<div class="container" ng-controller="AppCtrl">
 
     <form class="form-inline" ng-submit="send()">
+        <i class="fa fa-quote-left fa-inverse quotes"></i>
         <input type="text" ng-model="text" placeholder="input message" class="message"></input>
+        <i class="fa fa-quote-right fa-inverse quotes"></i>
     </form>
 
     <br>
@@ -16,16 +20,16 @@
 
 
 
+    <div class="col-xs-6 col-sm-3 sidebar-offcanvas" id="sidebar" role="navigation">
+        <div class="list-group">
+            <a ng-repeat="trend in trending" ng-click="toggleActive(trend)" class="list-group-item">
+                <i class="fa fa-square" ng-if="!activeTopics[trend.name]"></i>
+                <i class="fa fa-check-square" ng-if="activeTopics[trend.name]"></i>
+                {{trend.name}}
+                <span class="badge">{{trend.count}}</span>
+            </a>
+        </div>
+    </div>
 
-    <ul style="list-style:none;">
-        <li ng-repeat="trend in trending" ng-click="toggleActive(trend)">
-            <i class="fa fa-square" ng-if="!activeTopics[trend.name]"></i>
-            <i class="fa fa-check-square" ng-if="activeTopics[trend.name]"></i>
-            {{trend.name}} : {{trend.count}}
-        </li>
-    </ul>
-
-
-    </body>
 </div>
 }

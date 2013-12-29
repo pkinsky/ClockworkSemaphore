@@ -16,14 +16,6 @@ import play.api.libs.concurrent.Execution.Implicits._
 
 
 
-
-
-
-
-
-
-
-
 class SocketActor extends Actor {
   val redis = Redis()
 
@@ -67,11 +59,23 @@ class SocketActor extends Actor {
       userChannel.channelsCount = userChannel.channelsCount + 1
       webSockets += (userId -> userChannel)
 
+
+
       log debug s"channel for user : $userId count : ${userChannel.channelsCount}"
       log debug s"channel count : ${webSockets.size}"
 
       // return the enumerator related to the user channel,
       // this will be used for create the WebSocket
+
+
+      val init = List("#advert drugs", "tiger-team smart-claymore", "#minespace rebar",
+                      "grenade #AI", "#chrome skyscraper #numinous sprawl savant", "#augmented #reality vinyl",
+                      "#numinous #space crypto-rain", "sub-orbital corporation #sprawl #hacker",
+                      "Tokyo tanto #augmented #reality", "#weathered augmented reality", "military-grade #wristwatch")
+
+      init.map(s => Msg(userId, s.split(" ").filter(_.startsWith("#")).map(_.tail).toSet, s)).foreach{self ! _}
+
+
       sender ! userChannel.enumerator
 
 

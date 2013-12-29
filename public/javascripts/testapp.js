@@ -41,8 +41,8 @@ function AppCtrl($scope, ChatService) {
   $scope.messages = [];
 
     $scope.activeFilter = function (message) {
-        return _.some(message.topics, function(topic){
-                return $scope.activeTopics[topic]
+        return !_.some(message.topics, function(topic){
+                return !$scope.activeTopics[topic]
             }
         );
     };
@@ -87,8 +87,6 @@ function AppCtrl($scope, ChatService) {
   $scope.toggleActive = function(trend){
     $scope.activeTopics[trend.name] = ! $scope.activeTopics[trend.name]
   }
-
-  //need function to go over all messages, match with topics, find at least one active topic if exists
 
 
   $scope.send = function() {
