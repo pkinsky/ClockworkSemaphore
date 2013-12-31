@@ -14,7 +14,8 @@ object ApplicationBuild extends Build {
     "org.specs2" %% "specs2" % "1.14" % "test",
     "commons-codec" % "commons-codec" % "1.7",
     "com.typesafe.akka" %% "akka-testkit" % "2.1.0",
-    "com.livestream" %% "scredis" % "1.0.1"
+    "com.livestream" %% "scredis" % "1.0.1",
+    "org.scalaz" %% "scalaz-core" % "7.0.5"
   )
 
 

@@ -1,0 +1,19 @@
+
+
+INCR global:nextUserId => 1000
+SET uid:1000:username antirez
+SET uid:1000:password p1pp0
+SET username:antirez:uid 1000
+
+uid:1000:followers => Set of uids of all the followers users
+uid:1000:following => Set of uids of all the following users
+
+uid:1000:posts => a List of post ids, every new post is LPUSHed here.
+
+//uid, auth token pair
+SET uid:1000:auth fea5e81ac8ca77622bed1c2132a021f9
+SET auth:fea5e81ac8ca77622bed1c2132a021f9 1000
+
+//create and save post
+INCR global:nextPostId => 10343
+SET post:10343 "$owner_id|$time|I'm having fun with Retwis"

@@ -1,13 +1,75 @@
+@import "bootstrap/_bootstrap.less";
+
+
+@clouds:#ECF0F1;
+@concrete:#95A5A6;
+
+@asphalt:#34495E;
+
+
+@border-width:1px;
+@border-color:@asphalt;
+
 .container {
   text-align: center;
   margin-bottom: 40px;
 }
 
-#badge {
-    color:#ECF0F1;
-    font-size:200%;
+body{
+    padding-top:50px;
 }
 
+
 .quotes {
-    color:#95A5A6;
+    color:@concrete;
+}
+
+#tweeter{
+    padding: 6px;
+    font-size: 20px;
+}
+
+@belize-hole:#2980B9;
+@peter-river:#3498DB;
+@text-main:@clouds;
+
+
+#badge {
+    color:@belize-hole;
+}
+
+#main-navbar {
+    text-align:center;
+}
+
+.list-group-item {
+    border-color:@border-color;
+
+    border-width:@border-width;
+
+
+
+
+    background-color:@belize-hole;
+    color:@text-main;
+    text-align:left;
+
+    &:hover { background-color:@peter-river; }
+}
+
+a.list-group-item {
+    border-color:@border-color;
+
+    border-width:@border-width;
+
+    text-align:left;
+    background-color:@belize-hole;
+    color:@text-main;
+
+    &:hover { background-color:@peter-river; }
+
+    .badge {
+        color:@clouds;
+        background-color:@asphalt;
+    }
 }

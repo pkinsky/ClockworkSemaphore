@@ -9,7 +9,7 @@ import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import actors._
 import akka.actor.Props
@@ -19,15 +19,14 @@ import actors.StartSocket
 import actors.SocketClosed
 import scala.util.Random
 import play.api.Routes
+import scredis._
+import scala.util.{ Success, Failure }
+import play.api.libs.concurrent.Execution.Implicits._
 
 
-/**
- * User: Luigi Antonini
- * Date: 17/06/13
- * Time: 23:25
- */
 object AppController extends Controller with Secured{
 
+  val redis = Redis()
 
   def index = withAuth {
     implicit request => userId => {
@@ -39,7 +38,7 @@ object AppController extends Controller with Secured{
 
   /**
    * This function creates a WebSocket using the
-   * enumertator linked to the current user,
+   * enumerator linked to the current user,
    * retrieved from the TaskActor.
    */
   def indexWS = withAuthWS {
@@ -61,7 +60,7 @@ object AppController extends Controller with Secured{
                 timerActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
 
             case js =>
-                println(s"received jsvalue $js")
+                println(s"  ???: received jsvalue $js")
 
           }
 
@@ -86,6 +85,10 @@ object AppController extends Controller with Secured{
 }
 
 trait Secured {
+
+  val redis: Redis
+
+
   def username(request: RequestHeader) = {
     //verify or create session, this should be a real login
     request.session.get(Security.username)
@@ -96,8 +99,26 @@ trait Secured {
    * random userId and reload index page
    */
   def unauthF(request: RequestHeader) = {
-    val newId: String = new Random().nextInt().toString()
-    Redirect(routes.AppController.index).withSession(Security.username -> newId)
+
+    //most of the schema is here as strings... not ok
+    val result: Future[SimpleResult] = for{
+      uid <- redis.incr("global:nextUserId")
+      _ <- redis.pipelined { p =>
+        val name = s"nameof-$uid"
+        p.set(s"uid:$uid:username", s"name")
+        p.set(s"uid:$uid:password", "foobar")
+
+        p.set(s"username:$name:uid", uid)
+
+        val auth = s"auth-$uid"
+        p.set(s"uid:$uid:auth", auth)
+        p.set(s"auth:$auth", uid)
+
+        println(s"uid => $uid => $auth")
+      }
+    } yield Redirect(routes.AppController.index).withSession(Security.username -> uid.toString)
+
+      Await.result(result, 1 second)
   }
 
   /**
@@ -114,8 +135,8 @@ trait Secured {
 
   /**
    * This function provide a basic authentication for
-   * WebSocket, lekely withAuth function try to retrieve the
-   * the username form the session, and call f() funcion if find it,
+   * WebSocket, likely withAuth function try to retrieve the
+   * the username form the session, and call f() function if find it,
    * or create an error Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])])
    * if username is none
    */
