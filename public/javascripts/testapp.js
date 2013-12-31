@@ -20,6 +20,7 @@ app.factory('ChatService', function() {
 
     var ws = new WebSocket("ws://localhost:9000/websocket/");
     ws.onopen = function() {
+      service.ws.send(JSON.stringify("ACK"));
       //service.callback("Succeeded to open a connection");
       //alert("connection open");
     };
@@ -66,6 +67,9 @@ function AppCtrl($scope, ChatService) {
   ChatService.connect();
 
   ChatService.subscribe(function(message) {
+    
+    console.log("msg: " + message);
+    
     var actual = jQuery.parseJSON(message)
 
     if ('msg' in actual){
@@ -76,10 +80,8 @@ function AppCtrl($scope, ChatService) {
 
     if ('trending' in actual){
         var trending = actual['trending']
-        console.log(trending);
         trending.forEach(function(t) {
             if (t.name in $scope.activeTopics){
-                console.log("pre-existing")
             } else {
                $scope.activeTopics[t.name] = true;
             }

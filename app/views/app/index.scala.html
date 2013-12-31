@@ -1,4 +1,6 @@
-@layout("Hello Play Akka Angular WebSocket") {
+@(user_id: Long)
+
+@layout(s"Hello $user_id") {
 <div class="container" ng-controller="AppCtrl">
 
 
@@ -26,7 +28,7 @@
             <br>
             <ul class="list-group">
                 <li class="list-group-item" ng-repeat="message in messages | filter:activeFilter">
-                    <td>{{message.userId}} => {{message.msg}}</td>
+                    <td>{{message.user_id}} => {{message.msg}}</td>
                 </li>
             </ul>
         </div>

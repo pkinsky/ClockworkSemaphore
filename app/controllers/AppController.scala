@@ -30,7 +30,8 @@ object AppController extends Controller with Secured{
 
   def index = withAuth {
     implicit request => userId => {
-        Ok(views.html.app.index())
+	//val uid: Long = userId ???
+        Ok(views.html.app.index(0L))
     }
   }
 
@@ -47,29 +48,21 @@ object AppController extends Controller with Secured{
 
       implicit val timeout = Timeout(3 seconds)
 
-      // using the ask pattern of akka, 
-      // get the enumerator for that user
       (socketActor ? StartSocket(userId)) map {
         enumerator =>
 
-          // create a Iteratee which ignore the input and
-          // and send a SocketClosed message to the actor when
-          // connection is closed from the client
-
-          val c = Iteratee.foreach[JsValue]{
+          val it = Iteratee.foreach[JsValue]{
             case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
                 socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
+                
+            case JsString("ACK") => socketActor ! AckSocket(userId)
 
-            case js =>
-                println(s"  ???: received jsvalue $js")
-
+            case js => println(s"  ???: received jsvalue $js")
+          }.mapDone {
+            _ => socketActor ! SocketClosed(userId)
           }
-
-          val it = c mapDone {
-            _ =>
-              socketActor ! SocketClosed(userId)
-          }
-
+          
+          
           (it, enumerator.asInstanceOf[Enumerator[JsValue]])
       }
   }
@@ -124,7 +117,7 @@ trait Secured {
    * try to retieve the username, call f() if it is present,
    * or unauthF() otherwise
    */
-  def withAuth(f: => Int => Request[_ >: AnyContent] => Result): EssentialAction = {
+  def withAuth(f: => Long => Request[_ >: AnyContent] => Result): EssentialAction = {
     Security.Authenticated(username, unauthF) {
       username =>
         Action(request => f(username.toInt)(request))
@@ -138,7 +131,7 @@ trait Secured {
    * or create an error Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])])
    * if username is none
    */
-  def withAuthWS(f: => Int => Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])]): WebSocket[JsValue] = {
+  def withAuthWS(f: => Long => Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])]): WebSocket[JsValue] = {
 
     // this function create an error Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])])
     // the iteratee ignore the input and do nothing,

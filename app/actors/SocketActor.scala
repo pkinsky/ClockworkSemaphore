@@ -46,11 +46,8 @@ class SocketActor extends Actor {
   val redisActor = Akka.system.actorOf(Props[RedisActor])
 
 
-  // this map relate every user with his UserChannel
+  // this map relate every user with his or her UserChannel
   var webSockets: Map[User, UserChannel] = Map.empty
-
-  //subscriptions
-  var subscriptions: Map[User, Seq[String]] = Map.empty
 
   //track use of each topic
   //update to reflect Redis Integer capacity
@@ -70,16 +67,22 @@ class SocketActor extends Actor {
 
       log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
       log debug s"channel count : ${webSockets.size}"
+      
+      sender ! userChannel.enumerator
+      
+      
+      
+    case AckSocket(user_id) =>
+      log.debug(s"ack socket $user_id")
 
-
-      //request recent posts. (should be on client ack of websocket connect?)
+      //provision new socket with recent posts
       val op_id = next_op_id
       val op = RecentPosts(op_id)
       pending += op_id -> (user_id, op)
       redisActor ! op
-      
-      sender ! userChannel.enumerator
 
+      
+      
     case  AckRecentPosts(op_id, result) => {
     
       val (user_id, _) = pending(op_id)
@@ -158,6 +161,9 @@ sealed trait SocketMessage
 sealed trait JsonMessage{
   def asJson: JsValue
 }
+
+
+case class AckSocket(user_id: Long)
 
 
 case class Register extends SocketMessage
