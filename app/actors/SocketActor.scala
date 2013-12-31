@@ -13,125 +13,23 @@ import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
+import play.api.Play.current
+import RedisActor._
 
-import scredis._
-import scredis.parsing.Implicits._
+class SocketActor extends Actor {
 
-import scalaz._
-import Scalaz._
-/*
-import scalaz.Applicative
-import scalaz.syntax.ApplySyntax
-*/
-
-trait RedisSchema {
-  val global_timeline = "global:timeline"  //list
-
-  def post_body(post_id: Long) = s"post:$post_id:body"
-  def post_author(post_id: Long) = s"post:$post_id:author"
-
-  def user_followers(user_id: Long) =  s"uid:$user_id:followers" //uids of followers
-}
+  private def extract_topics(s: String): Set[String] = s.split(" ").filter(_.startsWith("#")).map(_.tail).toSet
 
 
-trait RedisOps extends RedisSchema {
-    import ApplicativeStuff._
-
-  val redis = Redis()
-
-  private def next_post_id: Future[Long] = redis.incr("global:nextPostId")
-
-  private def topics(s: String): Set[String] = s.split(" ").filter(_.startsWith("#")).map(_.tail).toSet
-
-  def recent_posts: Future[Seq[Msg]] =
-    for {
-      timeline <- redis.lRange[Long](global_timeline, 0, 50)
-      posts <-  Future.sequence(timeline.map{post_id =>
-
-        for {
-          a <- redis.get[Long](post_author(post_id))
-          b <- redis.get[String](post_body(post_id))
-        } yield (a, b)
-
-      })
-    } yield posts.map{case (Some(author), Some(post)) => Msg(author,  topics(post), post)} //fail horribly on failed lookup...
-
-  def followers(user_id: Long): Future[Set[Long]] = {
-		redis.sMembers[Long](user_followers(user_id))
-			.map(_.map(java.lang.Long.parseLong)) 
-			//sMembers return type is not parameterized with [Long], despite taking an implicit Parser[Long]
-			//ticket filed, will fix if neccesary. Meanwhile, fuck you scredis.
-	}
-
-  def post(user_id: Long, msg: String) = {
-  
-	def trim_global = redis.lTrim(global_timeline,0,1000)
-	
-    def handle_post(post_id: Long, audience: Set[Long]) =
-        (redis.lPush(global_timeline,post_id)
-           |@| redis.set(post_body(post_id), msg)
-           |@| redis.set(post_author(post_id), user_id)
-           |@| Future.sequence(
-                  audience.map{u =>
-                      redis.lPush(s"uid:$u:posts", post_id)
-                  }
-               )
-        ){ (a,b,c,d) => () }
-
-
-    for {
-      (post_id, followers) <- (next_post_id |@| followers(user_id))((a,b) => (a,b))
-	   _ <- handle_post(post_id, followers)
-	   _ <- trim_global
-    } yield post_id
+  var _op_id = 0L
+  def next_op_id = {
+    val prev = _op_id
+    _op_id = _op_id + 1
+    prev  
   }
+  
+  var pending = Map.empty[Long, (Long, RedisOp)]
 
-
-}
-
-
-object RedisActor {
-	case class RecentPosts(op_id: Long)
-	case class AckRecentPosts(op_id: Long, result: Seq[Msg])
-
-	case class Post(op_id: Long, user_id: Long, msg: String)
-	case class AckPost(op_Id: Long, post_id: Long)
-	case class Fail(op_Id: Long, t: Throwable)
-}
-
-class RedisActor extends Actor with RedisOps {
-	import RedisActor._
-
-	//needs prop redis ref
-
-		
-	
-
-	  override def receive = {
-	  
-		case Post(op_id, user_id, msg) => {
-				post(user_id, msg).onComplete{
-					case Success(post_id) => sender ! AckPost(op_id, post_id)
-					case Failure(t) => sender ! Fail(op_id, t)
-				}
-			}
-		
-		case RecentPosts(op_id) => {
-				recent_posts.onComplete{
-					case Success(msgs) => sender ! AckRecentPosts(op_id, msgs)
-					case Failure(t) => sender ! Fail(op_id, t)
-				}
-			}
-		
-	  }
-
-	
-
-}
-
-
-
-class SocketActor extends Actor with RedisOps {
 
   val init = List("#advert drugs", "tiger-team smart-claymore", "#minespace rebar",
 				  "grenade #AI", "#chrome skyscraper #numinous sprawl savant", "#augmented #reality vinyl",
@@ -144,6 +42,9 @@ class SocketActor extends Actor with RedisOps {
   lazy val log = Logger("application." + this.getClass.getName)
 
   type User = Long
+  
+  val redisActor = Akka.system.actorOf(Props[RedisActor])
+
 
   // this map relate every user with his UserChannel
   var webSockets: Map[User, UserChannel] = Map.empty
@@ -153,7 +54,7 @@ class SocketActor extends Actor with RedisOps {
 
   //track use of each topic
   //update to reflect Redis Integer capacity
-  var trending: Map[String, Long] = Map.empty.withDefaultValue(0L)
+  //var trending: Map[String, Long] = Map.empty.withDefaultValue(0L)
 
   override def receive = {
     case StartSocket(user_id) =>
@@ -170,31 +71,63 @@ class SocketActor extends Actor with RedisOps {
       log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
       log debug s"channel count : ${webSockets.size}"
 
-	  
-      recent_posts.foreach{_.foreach{m => println(s"recent post: $m"); self ! m}}
 
+      //request recent posts. (should be on client ack of websocket connect?)
+      val op_id = next_op_id
+      val op = RecentPosts(op_id)
+      pending += op_id -> (user_id, op)
+      redisActor ! op
+      
       sender ! userChannel.enumerator
 
-
-
-
-    case Msg(user_id, topics, msg) => {
-
-      trending = topics.foldLeft(trending)( (t, topic) => t.updated(topic, t(topic) + 1))
-
-      //this is not efficient. Should keep running tally in redis
+    case  AckRecentPosts(op_id, result) => {
+    
+      val (user_id, _) = pending(op_id)
+      pending -= op_id
+      
+      
+      val topics = result.flatMap(m => m.topics)
+      val trending = topics.foldLeft(Map.empty[String, Long].withDefaultValue(0L))( (t, topic) => t.updated(topic, t(topic) + 1))
       val popular = trending.toList.sortBy{case(k, v) => -v}//.take(5)
           .map{case (k, v) => Trend(k, v)}
-
-      post(user_id, msg).foreach{ unit => 
-
-        //should only trigger on message save
-        webSockets(user_id).channel push Update(
-              Some(Msg(user_id, topics, msg)),
+    
+    
+      //todo: batch (?)
+      println(s"ack recent posts => $result")
+      result.foreach{ msg =>
+            webSockets(user_id).channel push Update(
+              Some(msg),
               Some(popular).filterNot(_.isEmpty)
             ).asJson
-
       }
+     }
+
+      
+      
+
+    case Msg(user_id, topics, msg) => {    
+
+      val op_id = next_op_id
+      val op = Post(op_id, user_id, msg)
+      pending += op_id -> (user_id, op)
+      redisActor ! op
+      
+    }
+    
+    
+    case AckPost(op_id, post_id) => {
+    
+	val (user_id, Post(_, _, msg)) = pending(op_id)
+	pending -= op_id
+	
+	println(s"ack post: $msg")
+
+    
+            webSockets(user_id).channel push Update(
+              Some(Msg(user_id, extract_topics(msg), msg)),
+              None
+            ).asJson
+    
     }
 
 
@@ -209,12 +142,14 @@ class SocketActor extends Actor with RedisOps {
         log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
       } else {
         removeUserChannel(user_id)
-        log debug s"removed channel for $user_id"
       }
 
   }
 
-  def removeUserChannel(user_id: Long) = webSockets -= user_id
+  def removeUserChannel(user_id: Long) = {
+    log debug s"removed channel for $user_id"
+    webSockets -= user_id
+  }
 
 }
 

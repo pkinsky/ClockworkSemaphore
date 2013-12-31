@@ -1,3 +1,4 @@
+
 package controllers
 
 import play.api.mvc._
@@ -26,7 +27,6 @@ import play.api.libs.concurrent.Execution.Implicits._
 
 object AppController extends Controller with Secured{
 
-  val redis = Redis()
 
   def index = withAuth {
     implicit request => userId => {
@@ -34,7 +34,8 @@ object AppController extends Controller with Secured{
     }
   }
 
-  val timerActor = Akka.system.actorOf(Props[SocketActor])
+  
+  val socketActor = Akka.system.actorOf(Props[SocketActor])
 
   /**
    * This function creates a WebSocket using the
@@ -48,7 +49,7 @@ object AppController extends Controller with Secured{
 
       // using the ask pattern of akka, 
       // get the enumerator for that user
-      (timerActor ? StartSocket(userId)) map {
+      (socketActor ? StartSocket(userId)) map {
         enumerator =>
 
           // create a Iteratee which ignore the input and
@@ -57,7 +58,7 @@ object AppController extends Controller with Secured{
 
           val c = Iteratee.foreach[JsValue]{
             case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
-                timerActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
+                socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
 
             case js =>
                 println(s"  ???: received jsvalue $js")
@@ -66,7 +67,7 @@ object AppController extends Controller with Secured{
 
           val it = c mapDone {
             _ =>
-              timerActor ! SocketClosed(userId)
+              socketActor ! SocketClosed(userId)
           }
 
           (it, enumerator.asInstanceOf[Enumerator[JsValue]])
@@ -85,9 +86,19 @@ object AppController extends Controller with Secured{
 }
 
 trait Secured {
+  implicit val timeout = Timeout(1 second)
+  import RedisActor._
 
-  val redis: Redis
-
+  var _op_id = 0L
+  def next_op_id = {
+    val prev = _op_id
+    _op_id = _op_id + 1
+    prev  
+  }
+  
+  val redisActor = Akka.system.actorOf(Props[RedisActor])  
+  
+  
 
   def username(request: RequestHeader) = {
     //verify or create session, this should be a real login
@@ -99,30 +110,17 @@ trait Secured {
    * random userId and reload index page
    */
   def unauthF(request: RequestHeader) = {
-
-    //most of the schema is here as strings... not ok
-    val result: Future[SimpleResult] = for{
-      uid <- redis.incr("global:nextUserId")
-      _ <- redis.pipelined { p =>
-        val name = s"nameof-$uid"
-        p.set(s"uid:$uid:username", s"name")
-        p.set(s"uid:$uid:password", "foobar")
-
-        p.set(s"username:$name:uid", uid)
-
-        val auth = s"auth-$uid"
-        p.set(s"uid:$uid:auth", auth)
-        p.set(s"auth:$auth", uid)
-
-        println(s"uid => $uid => $auth")
-      }
-    } yield Redirect(routes.AppController.index).withSession(Security.username -> uid.toString)
-
-      Await.result(result, 1 second)
+    val result = for {
+      AckRegisterUser(_, user_id) <- (redisActor ? RegisterUser(next_op_id)).mapTo[AckRegisterUser]
+    } yield {
+      println(s"ack register user $user_id")
+      Redirect(routes.AppController.index).withSession(Security.username -> user_id.toString)
+    }
+    
+    Await.result(result, 1 second)
   }
 
   /**
-   * Basi authentication system
    * try to retieve the username, call f() if it is present,
    * or unauthF() otherwise
    */
