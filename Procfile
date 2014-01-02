@@ -1,1 +1,1 @@
-web: target/universal/stage/bin/clockwork-semaphore -Dhttp.port=$PORT
+web: target/universal/stage/bin/clockworksemaphore -Dhttp.port=$PORT

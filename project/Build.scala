@@ -4,7 +4,7 @@ import play.Project._
 
 object ApplicationBuild extends Build {
 
-  val appName = "PlayAkkaAngularWebSocket"
+  val appName = "ClockworkSemaphore"
   val appVersion = "1.0"
 
   val appDependencies = Seq(
