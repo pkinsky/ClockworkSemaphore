@@ -13,6 +13,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import akka.actor.{Props, Actor}
+import com.typesafe.config.{ConfigValueFactory, ConfigValue, Config, ConfigFactory}
 
 
 trait RedisSchema {
@@ -27,8 +28,23 @@ trait RedisSchema {
 
 trait RedisOps extends RedisSchema {
     import ApplicativeStuff._
+	
+	import scala.collection.JavaConversions._
+	import scala.collection.JavaConverters._
+	
+	
+  val config: Config = ConfigFactory.empty
+			.withValue("client", 
+				ConfigValueFactory.fromMap(
+					Map(
+						"client.host" -> System.getenv("REDISCLOUD_URL"),
+						"client.password" -> "raRzMQoBfJTFtwIu"
+					).asJava
+				)
+			)
+				
 
-  val redis = Redis()
+  val redis = Redis(config)
 
   private def next_post_id: Future[Long] = redis.incr("global:nextPostId")
 

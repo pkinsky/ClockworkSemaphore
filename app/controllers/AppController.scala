@@ -35,6 +35,7 @@ object AppController extends Controller with Secured{
     }
   }
 
+
   
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
@@ -45,8 +46,9 @@ object AppController extends Controller with Secured{
    */
   def indexWS = withAuthWS {
     userId =>
-
+	
       implicit val timeout = Timeout(3 seconds)
+
 
       (socketActor ? StartSocket(userId)) map {
         enumerator =>

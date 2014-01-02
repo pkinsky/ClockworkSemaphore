@@ -166,7 +166,7 @@ sealed trait JsonMessage{
 case class AckSocket(user_id: Long)
 
 
-case class Register extends SocketMessage
+case object Register extends SocketMessage
 
 case class StartSocket(user_id: Long) extends SocketMessage
 
