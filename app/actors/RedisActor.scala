@@ -37,14 +37,16 @@ trait RedisOps extends RedisSchema {
 			.withValue("client", 
 				ConfigValueFactory.fromMap(
 					Map(
-						"client.host" -> System.getenv("REDISCLOUD_URL"),
-						"client.password" -> "raRzMQoBfJTFtwIu"
+						"host" -> sys.env.get("REDISCLOUD_URL").getOrElse("localhost"),
+						"password" -> "raRzMQoBfJTFtwIu"
 					).asJava
 				)
 			)
+			
+	println("    >>>>>> YOLO >>>>> " + config)
 				
 
-  val redis = Redis(config)
+  val redis = Redis()
 
   private def next_post_id: Future[Long] = redis.incr("global:nextPostId")
 
