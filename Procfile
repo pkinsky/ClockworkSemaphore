@@ -1,1 +1,1 @@
-web:    play run --http.port=$PORT $PLAY_OPTS
+web: target/universal/stage/bin/clockwork-semaphore -Dhttp.port=$PORT
