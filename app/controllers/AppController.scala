@@ -24,50 +24,56 @@ import scredis._
 import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
 
+import securesocial.core.SecureSocial
 
-object AppController extends Controller with Secured{
 
+trait ActorStash {
 
-  def index = withAuth {
-    implicit request => userId => {
-	//val uid: Long = userId ???
-        Ok(views.html.app.index(0L))
-    }
-  }
-
-  
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
-  /**
-   * This function creates a WebSocket using the
-   * enumerator linked to the current user,
-   * retrieved from the TaskActor.
-   */
-  def indexWS = withAuthWS {
-    userId =>
+  val redisActor = Akka.system.actorOf(Props[RedisActor])  
 
-      implicit val timeout = Timeout(3 seconds)
+}
 
-      (socketActor ? StartSocket(userId)) map {
-        enumerator =>
 
-          val it = Iteratee.foreach[JsValue]{
-            case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
-                socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
-                
-            case JsString("ACK") => socketActor ! AckSocket(userId)
+object AppController extends Controller with SecureSocial with ActorStash{
 
-            case js => println(s"  ???: received jsvalue $js")
-          }.mapDone {
-            _ => socketActor ! SocketClosed(userId)
-          }
-          
-          
-          (it, enumerator.asInstanceOf[Enumerator[JsValue]])
-      }
+  implicit val timeout = Timeout(3 seconds)
+
+
+  def index: Action[AnyContent] =
+    SecuredAction { implicit request =>
+      Ok(views.html.app.index(0L))
+    }
+
+
+  def indexWS = WebSocket.async[JsValue] { request =>
+
+    val userId = 1L
+
+    // Log events to the console
+    (socketActor ? StartSocket(userId)) map {
+      enumerator =>
+
+        val it = Iteratee.foreach[JsValue]{
+          case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
+            socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
+
+          case JsString("ACK") => socketActor ! AckSocket(userId)
+
+          case js => println(s"  ???: received jsvalue $js")
+        }.mapDone {
+          _ => socketActor ! SocketClosed(userId)
+        }
+
+
+        (it, enumerator.asInstanceOf[Enumerator[JsValue]])
+    }
+
   }
 
-  def javascriptRoutes = Action {
+
+  def javascriptRoutes = SecuredAction {
     implicit request =>
       Ok(
         Routes.javascriptRouter("jsRoutes")(
@@ -78,6 +84,9 @@ object AppController extends Controller with Secured{
 
 }
 
+
+
+/*
 trait Secured {
   implicit val timeout = Timeout(1 second)
   import RedisActor._
@@ -88,10 +97,7 @@ trait Secured {
     _op_id = _op_id + 1
     prev  
   }
-  
-  val redisActor = Akka.system.actorOf(Props[RedisActor])  
-  
-  
+
 
   def username(request: RequestHeader) = {
     //verify or create session, this should be a real login
@@ -162,4 +168,4 @@ trait Secured {
     }
   }
 }
-
+*/
