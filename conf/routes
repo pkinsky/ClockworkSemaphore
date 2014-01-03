@@ -17,7 +17,7 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 GET     /login                      securesocial.controllers.LoginPage.login
 GET     /logout                     securesocial.controllers.LoginPage.logout
 
-# User Registration and password handling (only needed if you are using UsernamePasswordProvider)
+# User Registration
 GET     /signup                     securesocial.controllers.Registration.startSignUp
 POST    /signup                     securesocial.controllers.Registration.handleStartSignUp
 GET     /signup/:token              securesocial.controllers.Registration.signUp(token)

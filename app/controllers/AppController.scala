@@ -23,14 +23,14 @@ import play.api.Routes
 import scredis._
 import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
+import securesocial.core.SecureSocial
+
+object AppController extends Controller with SecureSocial {
 
 
-object AppController extends Controller with Secured{
-
-
-  def index = withAuth {
-    implicit request => userId => {
-	//val uid: Long = userId ???
+  def index = SecuredAction  {
+    implicit request => {
+        println(s" >>> !?! >>> index with secured user ${request.user}")
         Ok(views.html.app.index(0L))
     }
   }
@@ -44,13 +44,13 @@ object AppController extends Controller with Secured{
    * enumerator linked to the current user,
    * retrieved from the TaskActor.
    */
-  def indexWS = withAuthWS {
-    userId =>
+  def indexWS = {
+      val userId = 0L
 	
       implicit val timeout = Timeout(3 seconds)
 
 
-      (socketActor ? StartSocket(userId)) map {
+     val result =  (socketActor ? StartSocket(userId)) map {
         enumerator =>
 
           val it = Iteratee.foreach[JsValue]{
@@ -63,13 +63,16 @@ object AppController extends Controller with Secured{
           }.mapDone {
             _ => socketActor ! SocketClosed(userId)
           }
-          
-          
+
           (it, enumerator.asInstanceOf[Enumerator[JsValue]])
+
       }
+
+          WebSocket.async(request => result)
+
   }
 
-  def javascriptRoutes = Action {
+  def javascriptRoutes = SecuredAction {
     implicit request =>
       Ok(
         Routes.javascriptRouter("jsRoutes")(
