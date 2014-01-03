@@ -4,9 +4,6 @@ package actors
 import scredis._
 import scredis.parsing.Implicits._
 
-//import scalaz._
-//import Scalaz._
-
 import scalaz.syntax.applicative.ToApplyOps
 
 

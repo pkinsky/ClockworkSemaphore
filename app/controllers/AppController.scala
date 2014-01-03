@@ -33,7 +33,6 @@ object AppController extends Controller with SecureSocial {
 
   def index = SecuredAction  {
     implicit request => {
-        log.debug(s" WHAT WHAT WHAT >> hello ${SecureSocial.currentUser.map(_.identityId)}")
         Ok(views.html.app.index(0L))
     }
   }
