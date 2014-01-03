@@ -33,7 +33,10 @@ object AppController extends Controller with SecureSocial {
 
   def index = SecuredAction  {
     implicit request => {
-        Ok(views.html.app.index(0L))
+
+        val name = SecureSocial.currentUser.map(i => i.fullName).getOrElse("No-Name")
+
+        Ok(views.html.app.index(name))
     }
   }
 

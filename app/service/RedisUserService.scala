@@ -110,6 +110,8 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
       res <- Json.fromJson[Identity](js).asOpt
     } yield res
 
+    log.debug(s"found $r")
+
     r
   }
 

@@ -20,9 +20,12 @@ object ApplicationBuild extends Build {
   )
 
 
+
+
   val main = play.Project(appName, appVersion, appDependencies).settings(
     scalaVersion := "2.10.2",
-    resolvers += "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases/",
+    javaOptions in (Test,run) += "-Xmx8G",
+      resolvers += "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases/",
     resolvers += Resolver.url("sbt-plugin-snapshots", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-snapshots/"))(Resolver.ivyStylePatterns)
   )
 
