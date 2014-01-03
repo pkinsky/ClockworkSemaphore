@@ -110,7 +110,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
       res <- Json.fromJson[Identity](js).asOpt
     } yield res
 
-    log.debug(s"found $r")
+    log.debug(s"found $json => $r")
 
     r
   }
@@ -122,8 +122,9 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
   //oh god this is awful
   def save(user: Identity): Identity = {
-    log.debug(s"save $user")
-    val r = redis.set(s"user:${user.identityId.providerId}:${user.identityId.userId}:identity", Json.toJson[Identity](user))
+    val json = Json.toJson[Identity](user).toString
+    log.debug(s"save $user as $json")
+    val r = redis.set(s"user:${user.identityId.providerId}:${user.identityId.userId}:identity", json)
 
     Await.result(r, 1 second)
 
