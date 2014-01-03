@@ -33,11 +33,14 @@ trait RedisOps extends RedisSchema {
 	import scala.collection.JavaConverters._
 	
 	
+	val redisUri = new URI(System.getenv("REDISCLOUD_URL"))
+	
   val config: Config = ConfigFactory.empty
 			.withValue("client", 
 				ConfigValueFactory.fromMap(
 					Map(
-						"host" -> sys.env.get("REDISCLOUD_URL").getOrElse("localhost"),
+						"host" -> redisUri.getHost(),
+						"port" -> redisUri.getPort(),
 						"password" -> "raRzMQoBfJTFtwIu"
 					).asJava
 				)

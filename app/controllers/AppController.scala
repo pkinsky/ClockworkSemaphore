@@ -105,7 +105,7 @@ trait Secured {
    * random userId and reload index page
    */
   def unauthF(request: RequestHeader) = {
-    val result = for {
+    val result = for { //THIS HERE IS FUCKING SHIT UP, MATCHERROR ON FAILURE :(
       AckRegisterUser(_, user_id) <- (redisActor ? RegisterUser(next_op_id)).mapTo[AckRegisterUser]
     } yield {
       println(s"ack register user $user_id")
