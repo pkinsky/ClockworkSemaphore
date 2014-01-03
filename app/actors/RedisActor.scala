@@ -14,39 +14,42 @@ import scala.concurrent.{ExecutionContext, Future}
 import akka.actor.{Props, Actor}
 import com.typesafe.config.{ConfigValueFactory, ConfigValue, Config, ConfigFactory}
 
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
-trait RedisSchema {
+
+
+
+trait RedisBase {
   val global_timeline = "global:timeline"  //list
 
   def post_body(post_id: Long) = s"post:$post_id:body"
   def post_author(post_id: Long) = s"post:$post_id:author"
 
   def user_followers(user_id: Long) =  s"uid:$user_id:followers" //uids of followers
+
+  val redisUri = new java.net.URI(sys.env.get("REDISCLOUD_URL").getOrElse("redis://rediscloud:raRzMQoBfJTFtwIu@pub-redis-18175.us-east-1-2.2.ec2.garantiadata.com:18175"))
+
+  val config = ConfigFactory.empty
+    .withValue("client",
+      ConfigValueFactory.fromMap(
+        Map(
+          "host" -> redisUri.getHost(),
+          "port" -> redisUri.getPort(),
+          "password" -> "raRzMQoBfJTFtwIu"
+        ).asJava
+      )
+    )
+
+
+  val redis = Redis(config)
+
 }
 
 
-trait RedisOps extends RedisSchema {
+trait RedisOps extends RedisBase {
     import ApplicativeStuff._
-	
-	import scala.collection.JavaConversions._
-	import scala.collection.JavaConverters._
-	
-	
-	val redisUri = new java.net.URI(sys.env.get("REDISCLOUD_URL").getOrElse("redis://rediscloud:raRzMQoBfJTFtwIu@pub-redis-18175.us-east-1-2.2.ec2.garantiadata.com:18175"))
-	
-  val config = ConfigFactory.empty
-			.withValue("client", 
-				ConfigValueFactory.fromMap(
-					Map(
-						"host" -> redisUri.getHost(),
-						"port" -> redisUri.getPort(),
-						"password" -> "raRzMQoBfJTFtwIu"
-					).asJava
-				)
-			)
 
-			
-  val redis = Redis(config)
 
   private def next_post_id: Future[Long] = redis.incr("global:nextPostId")
 

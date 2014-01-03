@@ -28,16 +28,14 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import securesocial.core.SocialUser
+import actors.RedisBase
 
 /**
  * It will be necessary to block on redis calls here. cache heavily to minimize blocking api calls.
  */
-class RedisUserService(application: Application) extends UserServicePlugin(application) {
+class RedisUserService(application: Application) extends UserServicePlugin(application) with RedisBase {
 
   lazy val log = Logger("application." + this.getClass.getName)
-
-
-  val redis = Redis()
 
 
   implicit val format1 = Json.format[IdentityId]
