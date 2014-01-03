@@ -51,7 +51,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
         ("identityId", Json.toJson(user.identityId)),
         ("firstName", JsString(user.firstName)),
         ("lastName", JsString(user.lastName)),
-        ("fullName", JsString(user.lastName)),
+        ("fullName", JsString(user.fullName)),
         ("email", Json.toJson(user.email)),
         ("avatarUrl", Json.toJson(user.avatarUrl)),
         ("authMethod", Json.toJson(user.authMethod)),
