@@ -33,12 +33,6 @@ import securesocial.core.SocialUser
  * It will be necessary to block on redis calls here. cache heavily to minimize blocking api calls.
  */
 class RedisUserService(application: Application) extends UserServicePlugin(application) {
-  private var users = Map[String, Identity]()
-  private var tokens = Map[String, Token]()
-
-
-
-
 
   val redis = Redis()
 
@@ -152,27 +146,23 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
   def save(token: Token) {
 
-    val r = redis.set(s"token:${token.uuid}", token)
-
-    val json = Await.result(r, 1 second)
-
-
-    tokens += (token.uuid -> token)
+    None
   }
 
   def findToken(token: String): Option[Token] = {
-    tokens.get(token)
+
+    None)
   }
 
   def deleteToken(uuid: String) {
-    tokens -= uuid
+    None
   }
 
   def deleteTokens() {
-    tokens = Map()
+    None
   }
 
   def deleteExpiredTokens() {
-    tokens = tokens.filter(!_._2.isExpired)
+    None
   }
 }
