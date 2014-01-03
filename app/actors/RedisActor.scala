@@ -33,7 +33,7 @@ trait RedisOps extends RedisSchema {
 	import scala.collection.JavaConverters._
 	
 	
-	val redisUri = new URI(System.getenv("REDISCLOUD_URL"))
+	val redisUri = new java.net.URI(sys.env.get("REDISCLOUD_URL").getOrElse("redis://rediscloud:raRzMQoBfJTFtwIu@pub-redis-18175.us-east-1-2.2.ec2.garantiadata.com:18175"))
 	
   val config: Config = ConfigFactory.empty
 			.withValue("client", 
