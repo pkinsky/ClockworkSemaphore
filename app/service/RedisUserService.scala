@@ -34,6 +34,9 @@ import securesocial.core.SocialUser
  */
 class RedisUserService(application: Application) extends UserServicePlugin(application) {
 
+  lazy val log = Logger("application." + this.getClass.getName)
+
+
   val redis = Redis()
 
 
@@ -90,27 +93,6 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
   }
 
-  /*
-  def identToJson(user: Identity) = {
-
-
-    val js = JsObject(Seq(
-      ("identityId", Json.toJson(user.identityId)),
-      ("firstName", JsString(user.firstName)),
-      ("lastName", JsString(user.lastName)),
-      ("fullName", JsString(user.lastName)),
-      ("email", Json.toJson(user.email)),
-      ("avatarUrl", Json.toJson(user.avatarUrl)),
-      ("authMethod", Json.toJson(user.authMethod)),
-      ("oAuth1Info", Json.toJson(user.oAuth1Info)),
-      ("oAuth2Info", Json.toJson(user.oAuth2Info)),
-      ("passwordInfo", Json.toJson(user.passwordInfo))
-    ))
-
-    js
-
-  }*/
-
 
   object ParseJs extends Parser[JsValue]{
     protected def parseImpl(bytes: Array[Byte]): JsValue =
@@ -119,6 +101,9 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
 
   def find(id: IdentityId): Option[Identity] = {
+
+    log.debug(s"find $id")
+
     val fJson = redis.get[JsValue](s"user:${id.providerId}:${id.userId}:identity")(parser=ParseJs)
     val json = Await.result(fJson, 1 second)
 
@@ -137,6 +122,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
   //oh god this is awful
   def save(user: Identity): Identity = {
+    log.debug(s"save $user")
     val r = redis.set(s"user:${user.identityId.providerId}:${user.identityId.userId}:identity", Json.toJson[Identity](user))
 
     Await.result(r, 1 second)
@@ -151,7 +137,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
   def findToken(token: String): Option[Token] = {
 
-    None)
+    None
   }
 
   def deleteToken(uuid: String) {
