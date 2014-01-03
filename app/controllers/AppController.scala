@@ -78,6 +78,11 @@ object AppController extends Controller with Secured{
       ).as("text/javascript")
   }
 
+  def testApp = Action { implicit request =>
+    Ok(views.js.app.testApp())
+  }  
+  
+  
 }
 
 trait Secured {

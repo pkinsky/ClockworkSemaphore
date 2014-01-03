@@ -5,6 +5,7 @@
 # Tasks
 GET     /                           controllers.AppController.index
 GET     /websocket/                 controllers.AppController.indexWS
+GET     /assets/javascripts/testApp.js  controllers.AppController.testApp
 
 
 # Map static resources from the /public folder to the /assets URL path
