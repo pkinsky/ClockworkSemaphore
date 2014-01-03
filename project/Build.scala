@@ -15,13 +15,15 @@ object ApplicationBuild extends Build {
     "commons-codec" % "commons-codec" % "1.7",
     "com.typesafe.akka" %% "akka-testkit" % "2.1.0",
     "com.livestream" %% "scredis" % "1.0.1",
-    "org.scalaz" %% "scalaz-core" % "7.0.5"
+    "org.scalaz" %% "scalaz-core" % "7.0.5",
+	"securesocial" %% "securesocial" % "master-SNAPSHOT"	
   )
 
 
   val main = play.Project(appName, appVersion, appDependencies).settings(
     scalaVersion := "2.10.2",
-    resolvers += "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases/"
+    resolvers += "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases/",
+    resolvers += Resolver.url("sbt-plugin-snapshots", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-snapshots/"))(Resolver.ivyStylePatterns)
   )
 
 
