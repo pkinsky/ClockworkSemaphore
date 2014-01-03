@@ -46,7 +46,7 @@ trait RedisOps extends RedisSchema {
 	println("    >>>>>> YOLO >>>>> " + config)
 				
 
-  val redis = Redis()
+  val redis = Redis(config)
 
   private def next_post_id: Future[Long] = redis.incr("global:nextPostId")
 
