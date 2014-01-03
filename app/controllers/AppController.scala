@@ -24,13 +24,16 @@ import scredis._
 import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
 import securesocial.core.SecureSocial
+import akka.event.slf4j.Logger
 
 object AppController extends Controller with SecureSocial {
+
+  lazy val log = Logger("application." + this.getClass.getName)
 
 
   def index = SecuredAction  {
     implicit request => {
-        println(s" >>> !?! >>> index with secured user ${request.user}")
+        log.debug(s" WHAT WHAT WHAT >> hello ${SecureSocial.currentUser.map(_.identityId)}")
         Ok(views.html.app.index(0L))
     }
   }

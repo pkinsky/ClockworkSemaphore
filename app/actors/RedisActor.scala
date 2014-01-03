@@ -4,8 +4,10 @@ package actors
 import scredis._
 import scredis.parsing.Implicits._
 
-import scalaz._
-import Scalaz._
+//import scalaz._
+//import Scalaz._
+
+import scalaz.syntax.applicative.ToApplyOps
 
 
 import scala.util.{ Success, Failure }
@@ -35,7 +37,7 @@ trait RedisOps extends RedisSchema {
 	
 	val redisUri = new java.net.URI(sys.env.get("REDISCLOUD_URL").getOrElse("redis://rediscloud:raRzMQoBfJTFtwIu@pub-redis-18175.us-east-1-2.2.ec2.garantiadata.com:18175"))
 	
-  val config: Config = ConfigFactory.empty
+  val config = ConfigFactory.empty
 			.withValue("client", 
 				ConfigValueFactory.fromMap(
 					Map(
@@ -45,10 +47,8 @@ trait RedisOps extends RedisSchema {
 					).asJava
 				)
 			)
-			
-	println("    >>>>>> YOLO >>>>> " + config)
-				
 
+			
   val redis = Redis(config)
 
   private def next_post_id: Future[Long] = redis.incr("global:nextPostId")
