@@ -65,7 +65,7 @@ function AppCtrl($scope, ChatService) {
 
 
   $scope.set_alias = function() {
-    ChatService.send( {user_id:$scope.user_id, alias:alias} );
+    ChatService.send( {user_id:$scope.user_id, alias:$scope.alias} );
   };
 
 
