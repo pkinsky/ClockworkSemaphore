@@ -64,7 +64,7 @@ trait RedisBase {
 
 
 object RedisUserService extends RedisBase{
-  def uidFromIdentityId(id: IdentityId): String = s"user:${id.providerId}:${id.userId}:identity"
+  def uidFromIdentityId(id: IdentityId): String = s"${id.providerId}:${id.userId}"
 
   val redis = Redis(config)
 

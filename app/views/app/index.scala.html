@@ -18,7 +18,7 @@
         </div>
 
         <div class="col-md-8 col-xs-8">
-            <form class="form-inline" ng-submit="send()">
+            <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
                 <i class="fa fa-quote-left fa-2x quotes"></i>
                 &nbsp;
                 <input type="text" ng-model="text" placeholder="input message" class="message" id="tweeter"></input>
@@ -26,12 +26,8 @@
                 <i class="fa fa-quote-right fa-2x quotes"></i>
             </form>
 
-            <form class="form-inline" ng-submit="set_alias()" ng-if="signup_complete">
-                <i class="fa fa-quote-left fa-2x quotes"></i>
-                &nbsp;
-                <input type="text" ng-model="alias" placeholder="pick a pseudonym" class="alias"></input>
-                &nbsp;
-                <i class="fa fa-quote-right fa-2x quotes"></i>
+            <form class="form-inline" ng-submit="set_alias()" ng-if="!signup_complete()">
+                <input type="text" ng-model="alias" placeholder="pick a pseudonym"></input>
             </form>
 
 
