@@ -46,18 +46,6 @@ trait RedisBase {
 
   def user_followers(user_id: String) =  s"user:$user_id:followers" //uids of followers
 
-  val redisUri = new URI(sys.env.get("REDISCLOUD_URL").getOrElse("redis://rediscloud:raRzMQoBfJTFtwIu@pub-redis-18175.us-east-1-2.2.ec2.garantiadata.com:18175"))
-
-  val config = ConfigFactory.empty
-    .withValue("client",
-      ConfigValueFactory.fromMap(
-        Map(
-          "host" -> redisUri.getHost(),
-          "port" -> redisUri.getPort(),
-          "password" -> "raRzMQoBfJTFtwIu"
-        ).asJava
-      )
-    )
 
 }
 
@@ -66,7 +54,25 @@ trait RedisBase {
 object RedisUserService extends RedisBase{
   def uidFromIdentityId(id: IdentityId): String = s"${id.providerId}:${id.userId}"
 
-  val redis = Redis(config)
+
+  val redisUri = sys.env.get("REDISCLOUD_URL").map(new URI(_))
+
+  val redis = redisUri match{
+    case Some(u) => Redis(ConfigFactory.empty
+      .withValue("client",
+        ConfigValueFactory.fromMap(
+          Map(
+            "host" -> u.getHost(),
+            "port" -> u.getPort(),
+            "password" -> "raRzMQoBfJTFtwIu"
+          ).asJava
+        )
+      ))
+    case None => Redis()
+  }
+
+
+
 
 }
 

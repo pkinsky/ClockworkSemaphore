@@ -53,6 +53,8 @@ app.factory('ChatService', function() {
 
 
 function AppCtrl($scope, ChatService) {
+  //$scope.text = "";
+
 
   $scope.messages = [];
 
@@ -61,11 +63,16 @@ function AppCtrl($scope, ChatService) {
   //no alias is just empty string
   $scope.alias = "@{alias.getOrElse("")}";
 
-  $scope.signup_complete = function () {$scope.alias.length != 0;};
+  $scope.signup_complete = function () {
+    return $scope.alias.length != 0;
+
+  };
 
 
   $scope.set_alias = function() {
-    ChatService.send( {user_id:$scope.user_id, alias:$scope.alias} );
+    var alias_in = $("#alias").val();
+    console.log("setting alias: " + alias_in);
+    ChatService.send( {user_id:$scope.user_id, alias:alias_in} );
   };
 
 
@@ -112,6 +119,14 @@ function AppCtrl($scope, ChatService) {
         $scope.trending = trending;
     }
 
+    if ('alias_result' in actual){
+        if (actual['alias_result']['pass']){
+            $scope.alias = actual['alias_result']['alias'];
+        } else {
+            alert("alias taken: " +  actual['alias_result']['alias']);
+        }
+    }
+
     $scope.$apply();
   });
 
@@ -125,7 +140,9 @@ function AppCtrl($scope, ChatService) {
 
 
   $scope.send = function() {
-    var topics = $scope.text.split(" ");
+    var text = $("#tweeter").val();
+
+    var topics = text.split(" ");
     topics = jQuery.grep(topics, function( a ) {
               return a.charAt(0) === '#';
             });
@@ -135,7 +152,8 @@ function AppCtrl($scope, ChatService) {
              });
 
 
-    ChatService.send( {topic:topics, msg:$scope.text} );
-    $scope.text = "";
+    ChatService.send( {topic:topics, msg:text} );
+
+    $("#tweeter").val("");
   }
 }

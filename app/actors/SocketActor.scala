@@ -108,16 +108,17 @@ class SocketActor extends Actor {
 
 
     case RequestAlias(user_id, alias) => {
-      val alias_f = RedisUserService.redis.sAdd("global:aliases", alias).map(x => if(x==1L) Some(alias) else None)
+      val alias_f = RedisUserService.redis.sAdd("global:aliases", alias).map(_==1L)
 
-      alias_f.foreach{ alias_option =>
-              webSockets(user_id).channel push AckRequestAlias(user_id, alias_option).asJson
+      alias_f.foreach{ alias_pass =>
+              webSockets(user_id).channel push
+                Update(alias_result = Some(AckRequestAlias(user_id, alias, alias_pass))).asJson
             }
 
 
       alias_f.flatMap{
-        case Some(alias) => RedisUserService.redis.set(s"user:$user_id:alias", alias)
-        case None => Future{()}
+        case true => RedisUserService.redis.set(s"user:$user_id:alias", alias)
+        case false => Future{()}
       }
 
 
@@ -201,7 +202,7 @@ case class Msg(user_id: String, topics: Set[String], msg: String) extends Socket
 
 case class RequestAlias(user_id: String, alias: String) extends SocketMessage
 
-case class AckRequestAlias(user_id: String, alias: Option[String]) extends JsonMessage{
+case class AckRequestAlias(user_id: String, alias: String, pass: Boolean) extends JsonMessage{
   def asJson = {
     implicit val format = Json.format[AckRequestAlias]
     Json.toJson(this)
@@ -212,10 +213,11 @@ case class AckRequestAlias(user_id: String, alias: Option[String]) extends JsonM
 
 case class Trend(name: String, count: Long)
 
-case class Update(msg: Option[Msg], trending: Option[Seq[Trend]]) extends JsonMessage {
+case class Update(msg: Option[Msg]=None, trending: Option[Seq[Trend]]=None, alias_result: Option[AckRequestAlias]=None) extends JsonMessage {
   def asJson = {
     implicit val format1 = Json.format[Trend]
     implicit val format2 = Json.format[Msg]
+    implicit val format3 = Json.format[AckRequestAlias]
     implicit val format4 = Json.format[Update]
 
     Json.toJson(this)
