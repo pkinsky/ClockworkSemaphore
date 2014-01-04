@@ -10,7 +10,7 @@ import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import actors._
 import akka.actor.Props
@@ -18,15 +18,26 @@ import akka.pattern.ask
 import akka.util.Timeout
 import actors.StartSocket
 import actors.SocketClosed
-import scala.util.Random
 import play.api.Routes
-import scredis._
 import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
 import securesocial.core.SecureSocial
 import akka.event.slf4j.Logger
+import service._
+
+
 
 object AppController extends Controller with SecureSocial {
+
+  import RedisUserService.{redis, uidFromIdentityId}
+  implicit val timeout = Timeout(1 second)
+
+
+
+
+  val socketActor = Akka.system.actorOf(Props[SocketActor])
+
+
 
   lazy val log = Logger("application." + this.getClass.getName)
 
@@ -34,46 +45,62 @@ object AppController extends Controller with SecureSocial {
   def index = SecuredAction  {
     implicit request => {
 
-        val name = SecureSocial.currentUser.map(i => i.fullName).getOrElse("No-Name")
+        val user = SecureSocial.currentUser.get // fuck it
 
-        Ok(views.html.app.index(name))
+        val alias_key = s"user:${uidFromIdentityId(user.identityId)}:alias"
+
+        val alias = for {
+           alias_option <- redis.get[String](alias_key)
+        } yield alias_option.getOrElse("fuck!")
+
+      AsyncResult(alias.map(s => Ok(views.html.app.index(s))))
+
+
     }
   }
 
 
+
   
-  val socketActor = Akka.system.actorOf(Props[SocketActor])
 
   /**
    * This function creates a WebSocket using the
    * enumerator linked to the current user,
    * retrieved from the TaskActor.
    */
-  def indexWS = {
-      val userId = 0L
-	
-      implicit val timeout = Timeout(3 seconds)
+  def indexWS = WebSocket.async[JsValue]{
+
+    (request: RequestHeader) =>
+
+      implicit val rHeader = request
+
+      SecureSocial.currentUser.map{u =>
+
+        val userId = RedisUserService.uidFromIdentityId(u.identityId)
+
+        log.debug(s" >>>>> during websocket startup $u with uid => $userId")
 
 
-     val result =  (socketActor ? StartSocket(userId)) map {
-        enumerator =>
 
-          val it = Iteratee.foreach[JsValue]{
-            case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
-                socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
-                
-            case JsString("ACK") => socketActor ! AckSocket(userId)
+         (socketActor ? StartSocket(userId)) map {
+            enumerator =>
 
-            case js => println(s"  ???: received jsvalue $js")
-          }.mapDone {
-            _ => socketActor ! SocketClosed(userId)
+              val it = Iteratee.foreach[JsValue]{
+                case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
+                    socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
+
+                case JsString("ACK") => socketActor ! AckSocket(userId)
+
+                case js => println(s"  ???: received jsvalue $js")
+              }.mapDone {
+                _ => socketActor ! SocketClosed(userId)
+              }
+
+              (it, enumerator.asInstanceOf[Enumerator[JsValue]])
+
           }
+      }.getOrElse(errorFuture)
 
-          (it, enumerator.asInstanceOf[Enumerator[JsValue]])
-
-      }
-
-          WebSocket.async(request => result)
 
   }
 
@@ -86,95 +113,37 @@ object AppController extends Controller with SecureSocial {
       ).as("text/javascript")
   }
 
-  def testApp = Action { implicit request =>
-    Ok(views.js.app.testApp())
-  }  
-  
-  
-}
+  def testApp = SecuredAction { implicit request =>
 
-trait Secured {
-  implicit val timeout = Timeout(1 second)
-  import RedisActor._
+    val user = SecureSocial.currentUser.get // fuck it
 
-  var _op_id = 0L
-  def next_op_id = {
-    val prev = _op_id
-    _op_id = _op_id + 1
-    prev  
-  }
-  
-  val redisActor = Akka.system.actorOf(Props[RedisActor])  
-  
-  
+    val alias_key = s"user:${uidFromIdentityId(user.identityId)}:alias"
 
-  def username(request: RequestHeader) = {
-    //verify or create session, this should be a real login
-    request.session.get(Security.username)
+    val fAlias = for {
+      alias_option <- redis.get[String](alias_key)
+    } yield alias_option
+
+
+    AsyncResult( fAlias.map(alias => Ok(views.js.app.testApp(user, alias)) ) )
+
   }
 
-  /**
-   * When user not have a session, this function create a
-   * random userId and reload index page
-   */
-  def unauthF(request: RequestHeader) = {
-    val result = for { //THIS HERE IS FUCKING SHIT UP, MATCHERROR ON FAILURE :(
-      AckRegisterUser(_, user_id) <- (redisActor ? RegisterUser(next_op_id)).mapTo[AckRegisterUser]
-    } yield {
-      println(s"ack register user $user_id")
-      Redirect(routes.AppController.index).withSession(Security.username -> user_id.toString)
-    }
-    
-    Await.result(result, 1 second)
-  }
 
-  /**
-   * try to retieve the username, call f() if it is present,
-   * or unauthF() otherwise
-   */
-  def withAuth(f: => Long => Request[_ >: AnyContent] => Result): EssentialAction = {
-    Security.Authenticated(username, unauthF) {
-      username =>
-        Action(request => f(username.toInt)(request))
+
+
+
+
+
+
+  def errorFuture = {
+    val in = Iteratee.ignore[JsValue]
+    val out = Enumerator(Json.toJson("not authorized")).andThen(Enumerator.eof)
+
+    Future {
+      (in, out)
     }
   }
-
-  /**
-   * This function provide a basic authentication for
-   * WebSocket, likely withAuth function try to retrieve the
-   * the username form the session, and call f() function if find it,
-   * or create an error Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])])
-   * if username is none
-   */
-  def withAuthWS(f: => Long => Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])]): WebSocket[JsValue] = {
-
-    // this function create an error Future[(Iteratee[JsValue, Unit], Enumerator[JsValue])])
-    // the iteratee ignore the input and do nothing,
-    // and the enumerator just send a 'not authorized message'
-    // and close the socket, sending Enumerator.eof
-    def errorFuture = {
-      // Just consume and ignore the input
-      val in = Iteratee.ignore[JsValue]
-
-      // Send a single 'Hello!' message and close
-      val out = Enumerator(Json.toJson("not authorized")).andThen(Enumerator.eof)
-
-      Future {
-        (in, out)
-      }
-    }
-
-    WebSocket.async[JsValue] {
-      request =>
-        username(request) match {
-          case None =>
-            errorFuture
-
-          case Some(id) =>
-            f(id.toInt)
-            
-        }
-    }
-  }
+  
+  
 }
 

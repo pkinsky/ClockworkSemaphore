@@ -1,4 +1,6 @@
-@()(implicit r: RequestHeader)
+@(id: securesocial.core.Identity, alias: Option[String])(implicit r: RequestHeader)
+
+@import service.RedisUserService.uidFromIdentityId
 
 /*fixed navbar offset
 
@@ -54,12 +56,30 @@ function AppCtrl($scope, ChatService) {
 
   $scope.messages = [];
 
+  $scope.user_id = @{uidFromIdentityId(id.identityId)};
+
+  //no alias is just empty string
+  $scope.alias = "@{alias.getOrElse("")}";
+
+  $scope.signup_complete = function () {$scope.alias.length != 0;};
+
+
+  $scope.set_alias = function() {
+    ChatService.send( {user_id:$scope.user_id, alias:alias} );
+  };
+
+
+
+
     $scope.activeFilter = function (message) {
         return !_.some(message.topics, function(topic){
                 return !$scope.activeTopics[topic]
             }
         );
     };
+
+
+
 
   $scope.activeTopics = {};
 

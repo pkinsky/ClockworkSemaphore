@@ -28,7 +28,7 @@ class SocketActor extends Actor {
     prev  
   }
   
-  var pending = Map.empty[Long, (Long, RedisOp)]
+  var pending = Map.empty[Long, (String, RedisOp)]
 
 
   val init = List("#advert drugs", "tiger-team smart-claymore", "#minespace rebar",
@@ -37,11 +37,11 @@ class SocketActor extends Actor {
 				  "Tokyo tanto #augmented #reality", "#weathered augmented reality", "military-grade #wristwatch")
 
 
-  case class UserChannel(user_id: Long, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
+  case class UserChannel(user_id: String, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
   lazy val log = Logger("application." + this.getClass.getName)
 
-  type User = Long
+  type User = String
   
   val redisActor = Akka.system.actorOf(Props[RedisActor])
 
@@ -149,7 +149,7 @@ class SocketActor extends Actor {
 
   }
 
-  def removeUserChannel(user_id: Long) = {
+  def removeUserChannel(user_id: String) = {
     log debug s"removed channel for $user_id"
     webSockets -= user_id
   }
@@ -163,16 +163,16 @@ sealed trait JsonMessage{
 }
 
 
-case class AckSocket(user_id: Long)
+case class AckSocket(user_id: String)
 
 
 case object Register extends SocketMessage
 
-case class StartSocket(user_id: Long) extends SocketMessage
+case class StartSocket(user_id: String) extends SocketMessage
 
-case class SocketClosed(user_id: Long) extends SocketMessage
+case class SocketClosed(user_id: String) extends SocketMessage
 
-case class Msg(user_id: Long, topics: Set[String], msg: String) extends SocketMessage with JsonMessage{
+case class Msg(user_id: String, topics: Set[String], msg: String) extends SocketMessage with JsonMessage{
   def asJson = {
     implicit val format = Json.format[Msg]
     Json.toJson(this)

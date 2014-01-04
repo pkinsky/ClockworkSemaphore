@@ -17,9 +17,7 @@
 package service
 
 import play.api.{Logger, Application}
-import securesocial.core._
-import securesocial.core.providers.Token
-import securesocial.core.IdentityId
+import securesocial.core.{AuthenticationMethod, OAuth1Info, OAuth2Info, Identity, PasswordInfo, IdentityId, UserServicePlugin}
 import scredis.Redis
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -28,14 +26,58 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import securesocial.core.SocialUser
-import actors.RedisBase
+import com.typesafe.config.{ConfigValueFactory, ConfigValue, Config, ConfigFactory}
+
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+
+import java.net.URI
+import securesocial.core.providers.Token
 
 /**
  * It will be necessary to block on redis calls here. cache heavily to minimize blocking api calls.
  */
-class RedisUserService(application: Application) extends UserServicePlugin(application) with RedisBase {
 
+trait RedisBase {
+  val global_timeline = "global:timeline"  //list
+
+  def post_body(post_id: String) = s"post:$post_id:body"
+  def post_author(post_id: String) = s"post:$post_id:author"
+
+  def user_followers(user_id: String) =  s"user:$user_id:followers" //uids of followers
+
+  val redisUri = new URI(sys.env.get("REDISCLOUD_URL").getOrElse("redis://rediscloud:raRzMQoBfJTFtwIu@pub-redis-18175.us-east-1-2.2.ec2.garantiadata.com:18175"))
+
+  val config = ConfigFactory.empty
+    .withValue("client",
+      ConfigValueFactory.fromMap(
+        Map(
+          "host" -> redisUri.getHost(),
+          "port" -> redisUri.getPort(),
+          "password" -> "raRzMQoBfJTFtwIu"
+        ).asJava
+      )
+    )
+
+}
+
+
+
+object RedisUserService extends RedisBase{
+  def uidFromIdentityId(id: IdentityId): String = s"user:${id.providerId}:${id.userId}:identity"
+
+  val redis = Redis(config)
+
+}
+
+
+class RedisUserService(application: Application) extends UserServicePlugin(application) with RedisBase {
   lazy val log = Logger("application." + this.getClass.getName)
+
+
+
+
+  import RedisUserService._
 
 
   implicit val format1 = Json.format[IdentityId]
@@ -102,7 +144,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
     log.debug(s"find $id")
 
-    val fJson = redis.get[JsValue](s"user:${id.providerId}:${id.userId}:identity")(parser=ParseJs)
+    val fJson = redis.get[JsValue](s"user:${uidFromIdentityId(id)}:identity")(parser=ParseJs)
     val json = Await.result(fJson, 1 second)
 
     val r: Option[Identity] =  for {
@@ -115,41 +157,23 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
     r
   }
 
-  def findByEmailAndProvider(email: String, providerId: String): Option[Identity] = {
-    Logger.error("findByEmailAndProvider while username/password disabled")
-    None
-  }
 
   //oh god this is awful
   def save(user: Identity): Identity = {
     val json = Json.toJson[Identity](user).toString
     log.debug(s"save $user as $json")
-    val r = redis.set(s"user:${user.identityId.providerId}:${user.identityId.userId}:identity", json)
+    val r = redis.set(s"user:${uidFromIdentityId(user.identityId)}:identity", json)
 
     Await.result(r, 1 second)
 
     user
   }
 
-  def save(token: Token) {
-
-    None
-  }
-
-  def findToken(token: String): Option[Token] = {
-
-    None
-  }
-
-  def deleteToken(uuid: String) {
-    None
-  }
-
-  def deleteTokens() {
-    None
-  }
-
-  def deleteExpiredTokens() {
-    None
-  }
+  //not implemented
+  def findByEmailAndProvider(email: String, providerId: String): Option[Identity] = None
+  def save(token: Token) = None
+  def findToken(token: String): Option[Token] = None
+  def deleteToken(uuid: String) = None
+  def deleteTokens() = None
+  def deleteExpiredTokens() = None
 }

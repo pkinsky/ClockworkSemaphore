@@ -25,6 +25,16 @@
                 &nbsp;
                 <i class="fa fa-quote-right fa-2x quotes"></i>
             </form>
+
+            <form class="form-inline" ng-submit="set_alias()" ng-if="signup_complete">
+                <i class="fa fa-quote-left fa-2x quotes"></i>
+                &nbsp;
+                <input type="text" ng-model="alias" placeholder="pick a pseudonym" class="alias"></input>
+                &nbsp;
+                <i class="fa fa-quote-right fa-2x quotes"></i>
+            </form>
+
+
             <br>
             <ul class="list-group">
                 <li class="list-group-item" ng-repeat="message in messages | filter:activeFilter">
