@@ -15,6 +15,7 @@ import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
 import RedisActor._
+import service.RedisUserService
 
 class SocketActor extends Actor {
 
@@ -105,8 +106,26 @@ class SocketActor extends Actor {
       }
      }
 
-      
-      
+
+    case RequestAlias(user_id, alias) => {
+      val alias_f = RedisUserService.redis.sAdd("global:aliases", alias).map(x => if(x==1L) Some(alias) else None)
+
+      alias_f.foreach{ alias_option =>
+              webSockets(user_id).channel push AckRequestAlias(user_id, alias_option).asJson
+            }
+
+
+      alias_f.flatMap{
+        case Some(alias) => RedisUserService.redis.set(s"user:$user_id:alias", alias)
+        case None => Future{()}
+      }
+
+
+    }
+
+
+
+
 
     case Msg(user_id, topics, msg) => {    
 
@@ -177,6 +196,17 @@ case class Msg(user_id: String, topics: Set[String], msg: String) extends Socket
     implicit val format = Json.format[Msg]
     Json.toJson(this)
   }
+}
+
+
+case class RequestAlias(user_id: String, alias: String) extends SocketMessage
+
+case class AckRequestAlias(user_id: String, alias: Option[String]) extends JsonMessage{
+  def asJson = {
+    implicit val format = Json.format[AckRequestAlias]
+    Json.toJson(this)
+  }
+
 }
 
 

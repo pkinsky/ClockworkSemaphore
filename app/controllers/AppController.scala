@@ -30,7 +30,7 @@ import service._
 object AppController extends Controller with SecureSocial {
 
   import RedisUserService.{redis, uidFromIdentityId}
-  implicit val timeout = Timeout(1 second)
+  implicit val timeout = Timeout(2 second)
 
 
 
@@ -90,6 +90,10 @@ object AppController extends Controller with SecureSocial {
                     socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
 
                 case JsString("ACK") => socketActor ! AckSocket(userId)
+
+                //why send ws_user_id?
+                case JsObject(Seq(("user_id", JsString(ws_user_id)), ("alias", JsString(alias)))) =>
+                    socketActor ! RequestAlias(userId, alias)
 
                 case js => println(s"  ???: received jsvalue $js")
               }.mapDone {
