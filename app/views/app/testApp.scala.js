@@ -56,7 +56,7 @@ function AppCtrl($scope, ChatService) {
 
   $scope.messages = [];
 
-  $scope.user_id = @{uidFromIdentityId(id.identityId)};
+  $scope.user_id = "@{uidFromIdentityId(id.identityId)}";
 
   //no alias is just empty string
   $scope.alias = "@{alias.getOrElse("")}";
