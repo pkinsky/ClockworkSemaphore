@@ -1,6 +1,6 @@
 @(user_id: String)
 
-@layout(s"Hello $user_id") {
+@layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl">
 
 
@@ -33,7 +33,11 @@
             <br>
             <ul class="list-group">
                 <li class="list-group-item" ng-repeat="message in messages | filter:activeFilter">
-                    <td>{{message.user_id}} => {{message.msg}}</td>
+                    <img class="img-rounded" alt="140x140" style="width: 40px; height: 40px;" ng-src="{{avatars[message.user_id]}}">
+                    <br>
+                    {{aliases[message.user_id]}}
+                    <br>
+                    {{message.msg}}
                 </li>
             </ul>
         </div>

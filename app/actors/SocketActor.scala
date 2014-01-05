@@ -108,19 +108,18 @@ class SocketActor extends Actor {
 
 
     case RequestAlias(user_id, alias) => {
-      val alias_f = RedisUserService.redis.sAdd("global:aliases", alias).map(_==1L)
+        val alias_f = RedisUserService.redis.sAdd("global:aliases", alias).map(_==1L)
 
-      alias_f.foreach{ alias_pass =>
-              webSockets(user_id).channel push
-                Update(alias_result = Some(AckRequestAlias(user_id, alias, alias_pass))).asJson
-            }
+        alias_f.foreach{ alias_pass =>
+                webSockets(user_id).channel push
+                  Update(alias_result = Some(AckRequestAlias(user_id, alias, alias_pass))).asJson
+              }
 
 
-      alias_f.flatMap{
-        case true => RedisUserService.redis.set(s"user:$user_id:alias", alias)
-        case false => Future{()}
-      }
-
+        alias_f.flatMap{
+          case true => RedisUserService.redis.set(s"user:$user_id:alias", alias)
+          case false => Future{()}
+        }
 
     }
 

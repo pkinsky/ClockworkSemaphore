@@ -53,20 +53,37 @@ app.factory('ChatService', function() {
 
 
 function AppCtrl($scope, ChatService) {
-  //$scope.text = "";
-
-
-  $scope.messages = [];
 
   $scope.user_id = "@{uidFromIdentityId(id.identityId)}";
 
-  //no alias is just empty string
+  //no alias is empty string
+
+  $scope.avatars = {}
+  $scope.avatars[$scope.user_id] = "@{id.avatarUrl.getOrElse("")}";
+
+
+
+
   $scope.alias = "@{alias.getOrElse("")}";
 
   $scope.signup_complete = function () {
     return $scope.alias.length != 0;
-
   };
+
+  //init via jquery
+  $scope.aliases = {};
+  if ($scope.signup_complete()){
+    $scope.aliases[$scope.user_id] = $scope.alias;
+  }
+
+
+
+
+
+
+  $scope.messages = [];
+
+
 
 
   $scope.set_alias = function() {
@@ -122,6 +139,7 @@ function AppCtrl($scope, ChatService) {
     if ('alias_result' in actual){
         if (actual['alias_result']['pass']){
             $scope.alias = actual['alias_result']['alias'];
+            $scope.aliases[actual['alias_result']['user_id']] = actual['alias_result']['alias'];
         } else {
             alert("alias taken: " +  actual['alias_result']['alias']);
         }
