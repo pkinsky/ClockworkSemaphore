@@ -1,4 +1,7 @@
-This is your new Play 2.1 application
+Play 2.2 application
 =====================================
 
-This file will be packaged with your application, when using `play dist`.
+- Reactive single-page app using angularJS and websockets.
+- Websocket io handled server-side by Akka actors
+- Backed by redis, an in-memory key value store
+- Fully nonblocking (modulo a few Await.result(future_x) calls used to conform to an outside API's type signatures)
