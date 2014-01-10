@@ -38,139 +38,33 @@ import securesocial.core.providers.Token
  * It will be necessary to block on redis calls here. cache heavily to minimize blocking api calls.
  */
 
-trait RedisBase {
-  val global_timeline = "global:timeline"  //list
-
-  def post_body(post_id: String) = s"post:$post_id:body"
-  def post_author(post_id: String) = s"post:$post_id:author"
-
-  def user_followers(user_id: String) =  s"user:$user_id:followers" //uids of followers
 
 
-}
-
-
-
-object RedisUserService extends RedisBase{
-  def uidFromIdentityId(id: IdentityId): String = s"${id.providerId}:${id.userId}"
-
-
-  val redisUri = sys.env.get("REDISCLOUD_URL").map(new URI(_))
-
-  val redis = redisUri match{
-    case Some(u) => Redis(ConfigFactory.empty
-      .withValue("client",
-        ConfigValueFactory.fromMap(
-          Map(
-            "host" -> u.getHost(),
-            "port" -> u.getPort(),
-            "password" -> "raRzMQoBfJTFtwIu"
-          ).asJava
-        )
-      ))
-    case None => Redis()
-  }
-
-
-
-
-}
-
-
-class RedisUserService(application: Application) extends UserServicePlugin(application) with RedisBase {
+class RedisUserService(application: Application) extends UserServicePlugin(application) {
   lazy val log = Logger("application." + this.getClass.getName)
 
 
 
 
-  import RedisUserService._
 
 
-  implicit val format1 = Json.format[IdentityId]
-  implicit val format2 = Json.format[AuthenticationMethod]
-  implicit val format3 = Json.format[OAuth1Info]
-  implicit val format4 = Json.format[OAuth2Info]
-  implicit val format5 = Json.format[PasswordInfo]
-  implicit val format6 = Json.format[Token]
-
-  implicit val format8 = new Format[Identity]{
-    def writes(user: Identity): JsValue = {
-      JsObject(Seq(
-        ("identityId", Json.toJson(user.identityId)),
-        ("firstName", JsString(user.firstName)),
-        ("lastName", JsString(user.lastName)),
-        ("fullName", JsString(user.fullName)),
-        ("email", Json.toJson(user.email)),
-        ("avatarUrl", Json.toJson(user.avatarUrl)),
-        ("authMethod", Json.toJson(user.authMethod)),
-        ("oAuth1Info", Json.toJson(user.oAuth1Info)),
-        ("oAuth2Info", Json.toJson(user.oAuth2Info)),
-        ("passwordInfo", Json.toJson(user.passwordInfo))
-      ))
-    }
-
-    def reads(json: JsValue): JsResult[Identity] = {
-
-
-      for{
-          identityId <- Json.fromJson[IdentityId](json \ "identityId")
-          email <- Json.fromJson[Option[String]](json \ "email")
-          avatarUrl <- Json.fromJson[Option[String]](json \ "avatarUrl")
-          authMethod <- Json.fromJson[AuthenticationMethod](json \ "authMethod")
-          oAuth1Info <- Json.fromJson[Option[OAuth1Info]](json \ "oAuth1Info")
-          oAuth2Info <- Json.fromJson[Option[OAuth2Info]](json \ "oAuth2Info")
-          passwordInfo <- Json.fromJson[Option[PasswordInfo]](json \ "passwordInfo")
-      } yield SocialUser(
-          identityId = identityId,
-          firstName = (json \ "firstName").as[String],
-          lastName = (json \ "lastName").as[String],
-          fullName = (json \ "fullName").as[String],
-          email = email,
-          avatarUrl = avatarUrl,
-          authMethod = authMethod,
-          oAuth1Info = oAuth1Info,
-          oAuth2Info = oAuth2Info,
-          passwordInfo = passwordInfo
-      )
-
-
-    }
-
-
-  }
-
-
-  object ParseJs extends Parser[JsValue]{
-    protected def parseImpl(bytes: Array[Byte]): JsValue =
-      Json.parse(new String(bytes, "UTF-8"))
-  }
 
 
   def find(id: IdentityId): Option[Identity] = {
 
     log.debug(s"find $id")
 
-    val fJson = redis.get[JsValue](s"user:${uidFromIdentityId(id)}:identity")(parser=ParseJs)
+    val fJson = RedisService.get_user(id)
     val json = Await.result(fJson, 1 second)
 
-    val r: Option[Identity] =  for {
-      js <- json
-      res <- Json.fromJson[Identity](js).asOpt
-    } yield res
-
-    log.debug(s"found $json => $r")
-
-    r
+    json
   }
 
 
   //oh god this is awful
   def save(user: Identity): Identity = {
-    val json = Json.toJson[Identity](user).toString
-    log.debug(s"save $user as $json")
-    val r = redis.set(s"user:${uidFromIdentityId(user.identityId)}:identity", json)
 
-    Await.result(r, 1 second)
+    Await.result(RedisService.save_user(user), 1 second)
 
     user
   }

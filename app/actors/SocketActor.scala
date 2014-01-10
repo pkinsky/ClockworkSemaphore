@@ -14,8 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
-import RedisActor._
-import service.RedisUserService
+import service.{RedisService, RedisUserService}
 
 class SocketActor extends Actor {
 
@@ -28,8 +27,6 @@ class SocketActor extends Actor {
     _op_id = _op_id + 1
     prev  
   }
-  
-  var pending = Map.empty[Long, (String, RedisOp)]
 
 
   val init = List("#advert drugs", "tiger-team smart-claymore", "#minespace rebar",
@@ -43,8 +40,6 @@ class SocketActor extends Actor {
   lazy val log = Logger("application." + this.getClass.getName)
 
   type User = String
-  
-  val redisActor = Akka.system.actorOf(Props[RedisActor])
 
 
   // this map relate every user with his or her UserChannel
@@ -54,71 +49,88 @@ class SocketActor extends Actor {
   //update to reflect Redis Integer capacity
   //var trending: Map[String, Long] = Map.empty.withDefaultValue(0L)
 
-  override def receive = {
-    case StartSocket(user_id) =>
-      log.debug(s"start new socket for user $user_id")
 
-      val userChannel: UserChannel = webSockets.get(user_id) getOrElse {
+
+
+  def establishConnection(user_id: User): UserChannel = {
+    log.debug(s"establish socket connection for user $user_id")
+
+
+    val userChannel: UserChannel =  webSockets.get(user_id) getOrElse {
         val broadcast: (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
         UserChannel(user_id, 0, broadcast._1, broadcast._2)
+
       }
 
-      userChannel.channelsCount = userChannel.channelsCount + 1
-      webSockets += (user_id -> userChannel)
+    userChannel.channelsCount = userChannel.channelsCount + 1
+    webSockets += (user_id -> userChannel)
 
-      log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
-      log debug s"channel count : ${webSockets.size}"
-      
-      sender ! userChannel.enumerator
+    userChannel
+  }
+
+
+  def onConnect(user_id: User) = {
+
+    val userChannel: UserChannel = establishConnection(user_id)
+
+
+
+  }
+
+
+  def onRecentPosts(posts: Seq[Msg], user_id: User) = {
+
+    //not server side, remove topics.
+    val topics = posts.flatMap(m => m.topics)
+    val trending = topics.foldLeft(Map.empty[String, Long].withDefaultValue(0L))( (t, topic) => t.updated(topic, t(topic) + 1))
+    val popular = trending.toList.sortBy{case(k, v) => -v}//.take(5)
+      .map{case (k, v) => Trend(k, v)}
+
+
+    posts.foreach{ msg =>
+      webSockets(user_id).channel push Update(
+        Some(msg),
+        Some(popular).filterNot(_.isEmpty)
+      ).asJson
+    }
+
+  }
+
+
+
+
+
+
+
+  override def receive = {
+    case StartSocket(user_id) => {
+        val userChannel = establishConnection(user_id)
+        sender ! userChannel.enumerator
+      }
       
       
       
     case AckSocket(user_id) =>
       log.debug(s"ack socket $user_id")
 
-      //provision new socket with recent posts
-      val op_id = next_op_id
-      val op = RecentPosts(op_id)
-      pending += op_id -> (user_id, op)
-      redisActor ! op
-
-      
-      
-    case  AckRecentPosts(op_id, result) => {
-    
-      val (user_id, _) = pending(op_id)
-      pending -= op_id
-      
-      
-      val topics = result.flatMap(m => m.topics)
-      val trending = topics.foldLeft(Map.empty[String, Long].withDefaultValue(0L))( (t, topic) => t.updated(topic, t(topic) + 1))
-      val popular = trending.toList.sortBy{case(k, v) => -v}//.take(5)
-          .map{case (k, v) => Trend(k, v)}
-    
-    
-      //todo: batch (?)
-      println(s"ack recent posts => $result")
-      result.foreach{ msg =>
-            webSockets(user_id).channel push Update(
-              Some(msg),
-              Some(popular).filterNot(_.isEmpty)
-            ).asJson
+      RedisService.recent_posts.onComplete{
+        case Success(messages) =>   onRecentPosts(messages, user_id)
+        case Failure(t) => log.error(s"recent posts fail: $t")
       }
-     }
+
+
 
 
     case RequestAlias(user_id, alias) => {
-        val alias_f = RedisUserService.redis.sAdd("global:aliases", alias).map(_==1L)
+        val alias_f = RedisService.establish_alias(user_id, alias)
 
         alias_f.foreach{ alias_pass =>
-                webSockets(user_id).channel push
-                  Update(alias_result = Some(AckRequestAlias(user_id, alias, alias_pass))).asJson
+
               }
 
-
-        alias_f.flatMap{
-          case true => RedisUserService.redis.set(s"user:$user_id:alias", alias)
-          case false => Future{()}
+        alias_f.map(result => AckRequestAlias(alias, result)).onComplete{
+          case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
+          case Failure(t) => log.error(s"error requesting alias: $t")
         }
 
     }
@@ -127,29 +139,13 @@ class SocketActor extends Actor {
 
 
 
-    case Msg(user_id, topics, msg) => {    
-
-      val op_id = next_op_id
-      val op = Post(op_id, user_id, msg)
-      pending += op_id -> (user_id, op)
-      redisActor ! op
-      
-    }
-    
-    
-    case AckPost(op_id, post_id) => {
-    
-	val (user_id, Post(_, _, msg)) = pending(op_id)
-	pending -= op_id
-	
-	println(s"ack post: $msg")
-
-    
-            webSockets(user_id).channel push Update(
-              Some(Msg(user_id, extract_topics(msg), msg)),
-              None
-            ).asJson
-    
+    case message@Msg(user_id, topics, msg) => {
+	RedisService.post(user_id, msg).onComplete{ _ => 
+        	webSockets(user_id).channel push Update(
+	          Some(message),
+        	  None
+	        ).asJson
+	}
     }
 
 
@@ -201,7 +197,7 @@ case class Msg(user_id: String, topics: Set[String], msg: String) extends Socket
 
 case class RequestAlias(user_id: String, alias: String) extends SocketMessage
 
-case class AckRequestAlias(user_id: String, alias: String, pass: Boolean) extends JsonMessage{
+case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
   def asJson = {
     implicit val format = Json.format[AckRequestAlias]
     Json.toJson(this)

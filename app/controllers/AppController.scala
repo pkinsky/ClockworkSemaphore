@@ -29,10 +29,7 @@ import service._
 
 object AppController extends Controller with SecureSocial {
 
-  import RedisUserService.{redis, uidFromIdentityId}
   implicit val timeout = Timeout(2 second)
-
-
 
 
   val socketActor = Akka.system.actorOf(Props[SocketActor])
