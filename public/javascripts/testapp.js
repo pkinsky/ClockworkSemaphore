@@ -1,5 +1,4 @@
-
-/*fixed navbar offset
+/*dynamic navbar offset
 
 $(window).resize(function () {
    $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
@@ -13,20 +12,22 @@ $(window).load(function () {
 var app = angular.module('app', []);
 
 app.factory('ChatService', function() {
+
+   console.log("spinning up ChatService")
+
   var service = {};
 
   service.connect = function() {
     if(service.ws) { return; }
 
     var ws = new WebSocket("ws://localhost:9000/websocket/");
+
     ws.onopen = function() {
+        console.log("ack websocket");
       service.ws.send(JSON.stringify("ACK"));
-      //service.callback("Succeeded to open a connection");
-      //alert("connection open");
     };
 
     ws.onerror = function() {
-      //service.callback("Failed to open a connection");
       alert("error, failed to open connection");
     }
 
@@ -50,71 +51,65 @@ app.factory('ChatService', function() {
 
 
 function AppCtrl($scope, ChatService) {
+  ChatService.connect();
+
+  //map of user_id => object describing public components of user
+  $scope.users = {};
+
+  $scope.signup_complete = function () {
+    return $scope.current_user.alias.length != 0;
+  };
+
 
   $scope.messages = [];
 
-    $scope.activeFilter = function (message) {
-        return !_.some(message.topics, function(topic){
-                return !$scope.activeTopics[topic]
-            }
-        );
-    };
+    //no error when commented out..?
 
-  $scope.activeTopics = {};
+  $scope.set_alias = function() {
+    console.log("TEST TEST TEST");
+    var alias_in = $("#alias").val();
+    console.log("setting alias: " + alias_in);
+    ChatService.send( {user_id:$scope.user_id, alias:alias_in} );
+  };
 
-  $scope.trending = [];
-
-  ChatService.connect();
 
   ChatService.subscribe(function(message) {
-    
-    console.log("msg: " + message);
-    
-    var actual = jQuery.parseJSON(message)
+            console.log("msg: " + message);
+            var actual = jQuery.parseJSON(message)
 
-    if ('msg' in actual){
-        var msg = actual['msg']
-        msg['show'] = true; //will show messages pushed to ignored topics
-        $scope.messages.push((msg));
-    }
-
-    if ('trending' in actual){
-        var trending = actual['trending']
-        trending.forEach(function(t) {
-            if (t.name in $scope.activeTopics){
-            } else {
-               $scope.activeTopics[t.name] = true;
+            if ('msg' in actual){
+                var msg = actual['msg']
+                msg['show'] = true; //will show messages pushed to ignored topics
+                $scope.messages.push((msg));
             }
-          });
 
+            if ('user_info' in actual){
+                //add new users to $scope.users
+            }
 
-        $scope.trending = trending;
-    }
+            if ('alias_result' in actual){
+                if (actual['alias_result']['pass']){
+                    $scope.alias = actual['alias_result']['alias'];
+                    $scope.aliases[actual['alias_result']['user_id']] = actual['alias_result']['alias'];
+                } else {
+                    alert("alias taken: " +  actual['alias_result']['alias']);
+                }
+            }
 
-    $scope.$apply();
-  });
+            $scope.$apply();
+      }
+  );
 
   $scope.connect = function() {
     ChatService.connect();
-  }
-
-  $scope.toggleActive = function(trend){
-    $scope.activeTopics[trend.name] = ! $scope.activeTopics[trend.name]
-  }
-
+  };
 
   $scope.send = function() {
-    var topics = $scope.text.split(" ");
-    topics = jQuery.grep(topics, function( a ) {
-              return a.charAt(0) === '#';
-            });
+    var text = $("#tweeter").val();
+	if (text.length > 0){
+		ChatService.send( {msg:text} );
+		$("#tweeter").val("");
+	}
+  };
 
-    topics = $.map(topics, function( n ) {
-               return n.substring(1);
-             });
-
-
-    ChatService.send( {topic:topics, msg:$scope.text} );
-    $scope.text = "";
-  }
 }

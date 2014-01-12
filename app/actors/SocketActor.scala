@@ -16,45 +16,28 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
 import service.{RedisService, RedisUserService}
 
+import securesocial.core.{AuthenticationMethod, OAuth1Info, OAuth2Info, Identity, PasswordInfo, IdentityId, UserServicePlugin}
+
+
 class SocketActor extends Actor {
 
   private def extract_topics(s: String): Set[String] = s.split(" ").filter(_.startsWith("#")).map(_.tail).toSet
 
 
-  var _op_id = 0L
-  def next_op_id = {
-    val prev = _op_id
-    _op_id = _op_id + 1
-    prev  
-  }
-
-
-  val init = List("#advert drugs", "tiger-team smart-claymore", "#minespace rebar",
-				  "grenade #AI", "#chrome skyscraper #numinous sprawl savant", "#augmented #reality vinyl",
-				  "#numinous #space crypto-rain", "sub-orbital corporation #sprawl #hacker",
-				  "Tokyo tanto #augmented #reality", "#weathered augmented reality", "military-grade #wristwatch")
-
-
-  case class UserChannel(user_id: String, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
+  case class UserChannel(user_id: IdentityId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
   lazy val log = Logger("application." + this.getClass.getName)
 
-  type User = String
+  type User = IdentityId
 
 
   // this map relate every user with his or her UserChannel
   var webSockets: Map[User, UserChannel] = Map.empty
 
-  //track use of each topic
-  //update to reflect Redis Integer capacity
-  //var trending: Map[String, Long] = Map.empty.withDefaultValue(0L)
-
-
-
+  
 
   def establishConnection(user_id: User): UserChannel = {
     log.debug(s"establish socket connection for user $user_id")
-
 
     val userChannel: UserChannel =  webSockets.get(user_id) getOrElse {
         val broadcast: (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
@@ -69,28 +52,11 @@ class SocketActor extends Actor {
   }
 
 
-  def onConnect(user_id: User) = {
-
-    val userChannel: UserChannel = establishConnection(user_id)
-
-
-
-  }
-
-
   def onRecentPosts(posts: Seq[Msg], user_id: User) = {
-
-    //not server side, remove topics.
-    val topics = posts.flatMap(m => m.topics)
-    val trending = topics.foldLeft(Map.empty[String, Long].withDefaultValue(0L))( (t, topic) => t.updated(topic, t(topic) + 1))
-    val popular = trending.toList.sortBy{case(k, v) => -v}//.take(5)
-      .map{case (k, v) => Trend(k, v)}
-
 
     posts.foreach{ msg =>
       webSockets(user_id).channel push Update(
-        Some(msg),
-        Some(popular).filterNot(_.isEmpty)
+        msg = Some(msg)
       ).asJson
     }
 
@@ -110,18 +76,32 @@ class SocketActor extends Actor {
       
       
       
-    case AckSocket(user_id) =>
+    case AckSocket(user_id) => {
       log.debug(s"ack socket $user_id")
 
-      RedisService.recent_posts.onComplete{
+      val result = for {
+        posts <- RedisService.recent_posts
+        //users <- Future.sequence(posts.map(p => RedisService.get_public_user(p.user_id).map(_.get)))
+      } yield posts //users.zip(posts)
+
+      result.onComplete{
         case Success(messages) =>   onRecentPosts(messages, user_id)
-        case Failure(t) => log.error(s"recent posts fail: $t")
+        case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
 
-
-
+      /*
+      for {
+        public_user <- RedisService.get_public_user(user_id)
+      } {
+        webSockets(user_id).channel push Update(
+          user_info = Some(public_user)
+        ).asJson
+      */
+      }
 
     case RequestAlias(user_id, alias) => {
+        log.info(s"user $user_id requesting alias $alias")
+
         val alias_f = RedisService.establish_alias(user_id, alias)
 
         alias_f.foreach{ alias_pass =>
@@ -139,13 +119,13 @@ class SocketActor extends Actor {
 
 
 
-    case message@Msg(user_id, topics, msg) => {
-	RedisService.post(user_id, msg).onComplete{ _ => 
-        	webSockets(user_id).channel push Update(
-	          Some(message),
-        	  None
-	        ).asJson
-	}
+    case message@Msg(user_id, msg) => {
+        RedisService.post(user_id, msg).onComplete{ _ =>
+                webSockets(user_id).channel push Update(
+                  Some(message),
+                  None
+                ).asJson
+        }
     }
 
 
@@ -164,7 +144,7 @@ class SocketActor extends Actor {
 
   }
 
-  def removeUserChannel(user_id: String) = {
+  def removeUserChannel(user_id: IdentityId) = {
     log debug s"removed channel for $user_id"
     webSockets -= user_id
   }
@@ -178,39 +158,43 @@ sealed trait JsonMessage{
 }
 
 
-case class AckSocket(user_id: String)
+case class AckSocket(user_id: IdentityId)
 
 
 case object Register extends SocketMessage
 
-case class StartSocket(user_id: String) extends SocketMessage
+case class StartSocket(user_id: IdentityId) extends SocketMessage
 
-case class SocketClosed(user_id: String) extends SocketMessage
+case class SocketClosed(user_id: IdentityId) extends SocketMessage
 
-case class Msg(user_id: String, topics: Set[String], msg: String) extends SocketMessage with JsonMessage{
+case class Msg(user_id: IdentityId, msg: String) extends SocketMessage with JsonMessage{
   def asJson = {
+    implicit val format0 = Json.format[IdentityId]
     implicit val format = Json.format[Msg]
     Json.toJson(this)
   }
 }
 
 
-case class RequestAlias(user_id: String, alias: String) extends SocketMessage
+case class RequestAlias(user_id: IdentityId, alias: String) extends SocketMessage
 
 case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
   def asJson = {
     implicit val format = Json.format[AckRequestAlias]
     Json.toJson(this)
   }
-
 }
 
 
-case class Trend(name: String, count: Long)
+case class PublicIdentity(user_id: IdentityId, alias: String, avatar_url: Option[String])
 
-case class Update(msg: Option[Msg]=None, trending: Option[Seq[Trend]]=None, alias_result: Option[AckRequestAlias]=None) extends JsonMessage {
+
+case class Update(msg: Option[Msg]=None, 
+				  alias_result: Option[AckRequestAlias]=None,
+				  user_info: Option[PublicIdentity]=None) extends JsonMessage {
   def asJson = {
-    implicit val format1 = Json.format[Trend]
+    implicit val formata = Json.format[IdentityId]
+    implicit val format0 = Json.format[PublicIdentity]
     implicit val format2 = Json.format[Msg]
     implicit val format3 = Json.format[AckRequestAlias]
     implicit val format4 = Json.format[Update]

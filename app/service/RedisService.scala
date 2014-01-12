@@ -3,7 +3,7 @@ package service
 import java.net.URI
 import scredis.Redis
 import com.typesafe.config.{ConfigValueFactory, ConfigFactory}
-import actors.{Msg, ApplicativeStuff}
+import actors._
 import ApplicativeStuff._
 import scala.concurrent.Future
 import scalaz.syntax.applicative.ToApplyOps
@@ -11,18 +11,29 @@ import play.api.libs.json._
 import scredis.parsing.Parser
 import securesocial.core._
 import scala.Some
-import actors.Msg
 import scala.Some
-import actors.Msg
 import securesocial.core.providers.Token
 import securesocial.core.providers.Token
 import scala.Some
-import actors.Msg
 import play.api.libs.json.JsString
 import securesocial.core.providers.Token
 import scala.Some
 import play.api.libs.json.JsObject
-import actors.Msg
+import securesocial.core.OAuth1Info
+import securesocial.core.IdentityId
+import play.api.libs.json.JsString
+import securesocial.core.providers.Token
+import scala.Some
+import securesocial.core.OAuth2Info
+import securesocial.core.PasswordInfo
+import play.api.libs.json.JsObject
+import play.api.Logger
+
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+
+import play.api.libs.concurrent.Execution.Implicits._
+import scredis.exceptions.RedisParsingException
 import securesocial.core.OAuth1Info
 import securesocial.core.IdentityId
 import play.api.libs.json.JsString
@@ -32,12 +43,6 @@ import securesocial.core.OAuth2Info
 import securesocial.core.PasswordInfo
 import play.api.libs.json.JsObject
 import actors.Msg
-import play.api.Logger
-
-import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
-
-import play.api.libs.concurrent.Execution.Implicits._
 
 object RedisService {
   lazy val log = Logger("application." + this.getClass.getName)
@@ -99,9 +104,12 @@ object RedisService {
 
 
 
+  def idToString(id: IdentityId): String = s"${id.providerId}:${id.userId}"
 
-
-
+  def stringToId(id: String): IdentityId = id.split(":") match {
+    case Array(user_id, provider_id) => IdentityId(provider_id, user_id)
+    case _ => throw new IllegalArgumentException(s"could not parse user id $id")
+  }
 
 
 
@@ -111,9 +119,10 @@ object RedisService {
   def post_body(post_id: String) = s"post:$post_id:body"
   def post_author(post_id: String) = s"post:$post_id:author"
 
-  def user_followers(user_id: String) =  s"user:$user_id:followers" //uids of followers
+  def user_alias(user_id: IdentityId) = s"user:${idToString(user_id)}:alias"
 
-  def uidFromIdentityId(id: IdentityId): String = s"${id.providerId}:${id.userId}"
+  def user_followers(user_id: IdentityId) =  s"user:${idToString(user_id)}:followers" //uids of followers
+
 
 
   val redisUri = sys.env.get("REDISCLOUD_URL").map(new URI(_))
@@ -139,7 +148,9 @@ object RedisService {
 
 
   def get_user(user_id: IdentityId): Future[Option[Identity]] =
-    redis.get[JsValue](s"user:${uidFromIdentityId(user_id)}:identity")(parser=ParseJs).map{ json =>
+    redis.get[JsValue](s"user:${idToString(user_id)}:identity")(parser=ParseJs).map{ json =>
+
+      log.info(s"get_user($user_id) result: $json")
 
       for {
         js <- json
@@ -147,21 +158,38 @@ object RedisService {
       } yield res
     }
 
-  def save_user(user: Identity) = {
-    val user_json = Json.toJson[Identity](user).toString
 
-    log.debug(s"save $user as $user_json")
-
-    redis.set(s"user:${uidFromIdentityId(user.identityId)}:identity", user_json)
+  def get_public_user(user_id: IdentityId): Future[Option[PublicIdentity]] = {
+    for {
+      id_opt <- get_user(user_id)
+      alias_opt <- get_alias(user_id)
+    } yield {
+        log.info(s"get_public_user for $user_id results: $id_opt, $alias_opt")
+        for {
+          id <- id_opt
+          alias <- alias_opt
+        } yield PublicIdentity(id.identityId, alias, id.avatarUrl)
+    }
   }
 
 
 
-  def establish_alias(user_id: String, alias: String) = {
+  def save_user(user: Identity) = {
+    val user_json = Json.toJson[Identity](user).toString
+
+    log.info(s"save $user to user:${idToString(user.identityId)}:identity")
+
+    redis.set(s"user:${idToString(user.identityId)}:identity", user_json)
+  }
+
+  def get_alias(user_id: IdentityId) = redis.get[String](user_alias(user_id))
+
+
+  def establish_alias(user_id: IdentityId, alias: String) = {
     val alias_f = redis.sAdd("global:aliases", alias).map(_==1L)
 
     alias_f.flatMap{
-      case true => redis.set(s"user:$user_id:alias", alias).map(_ => true)
+      case true => redis.set(user_alias(user_id), alias).map(_ => true)
       case false => Future(false)
     }
   }
@@ -170,34 +198,34 @@ object RedisService {
 
   private def next_post_id: Future[String] = redis.incr("global:nextPostId").map(_.toString)
 
-  private def topics(s: String): Set[String] = s.split(" ").filter(_.startsWith("#")).map(_.tail).toSet
 
+  //fuck this method, srsly
   def recent_posts: Future[Seq[Msg]] =
     for {
       timeline <- redis.lRange[String](global_timeline, 0, 50)
       posts <-  Future.sequence(timeline.map{post_id =>
 
         for {
-          a <- redis.get[String](post_author(post_id))
+          author <- redis.get[String](post_author(post_id))
           b <- redis.get[String](post_body(post_id))
-        } yield (a, b)
+        } yield (author.map(stringToId(_)), b)
 
       })
-    } yield posts.map{case (Some(author), Some(post)) => Msg(author,  topics(post), post)} //fail horribly on failed lookup...
+    } yield posts.map{case (Some(author), Some(post)) => Msg(author, post)} //fail horribly on failed lookup...
 
-  def followers(user_id: String): Future[Set[String]] = {
+  def followers(user_id: IdentityId): Future[Set[String]] = {
     redis.sMembers[String](user_followers(user_id))
   }
 
 
-  def post(user_id: String, msg: String) = {
+  def post(user_id: IdentityId, msg: String) = {
 
     def trim_global = redis.lTrim(global_timeline,0,1000)
 
     def handle_post(post_id: String, audience: Set[String]) =
       (redis.lPush(global_timeline,post_id)
         |@| redis.set(post_body(post_id), msg)
-        |@| redis.set(post_author(post_id), user_id)
+        |@| redis.set(post_author(post_id), idToString(user_id))
         |@| Future.sequence(
         audience.map{u =>
           redis.lPush(s"user:$u:posts", post_id)

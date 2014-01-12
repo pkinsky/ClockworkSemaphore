@@ -5,13 +5,11 @@
 # Tasks
 GET     /                           controllers.AppController.index
 GET     /websocket/                 controllers.AppController.indexWS
-GET     /assets/javascripts/testApp.js  controllers.AppController.testApp
 
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/javascripts/routes  controllers.AppController.javascriptRoutes
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
-
 
 # Login flow
 GET     /login                      securesocial.controllers.LoginPage.login

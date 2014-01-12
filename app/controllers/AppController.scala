@@ -26,7 +26,6 @@ import akka.event.slf4j.Logger
 import service._
 
 
-
 object AppController extends Controller with SecureSocial {
 
   implicit val timeout = Timeout(2 second)
@@ -42,17 +41,11 @@ object AppController extends Controller with SecureSocial {
   def index = SecuredAction  {
     implicit request => {
 
-        val user = SecureSocial.currentUser.get // fuck it
+      val user = SecureSocial.currentUser.get //fuckit
 
-        val alias_key = s"user:${uidFromIdentityId(user.identityId)}:alias"
+      val user_id = RedisService.idToString(user.identityId)
 
-        val alias = for {
-           alias_option <- redis.get[String](alias_key)
-        } yield alias_option.getOrElse("fuck!")
-
-      AsyncResult(alias.map(s => Ok(views.html.app.index(s))))
-
-
+      Ok(views.html.app.index(user_id))
     }
   }
 
@@ -73,18 +66,15 @@ object AppController extends Controller with SecureSocial {
 
       SecureSocial.currentUser.map{u =>
 
-        val userId = RedisUserService.uidFromIdentityId(u.identityId)
-
-        log.debug(s" >>>>> during websocket startup $u with uid => $userId")
-
+        val userId = u.identityId
 
 
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
 
               val it = Iteratee.foreach[JsValue]{
-                case JsObject(Seq(("topic", JsArray(topics)), ("msg", JsString(msg)))) =>
-                    socketActor ! Msg(userId, topics.collect{case JsString(str) => str}.toSet, msg)
+                case JsObject(Seq((("msg", JsString(msg))))) =>
+                    socketActor ! Msg(userId, msg)
 
                 case JsString("ACK") => socketActor ! AckSocket(userId)
 
@@ -92,7 +82,7 @@ object AppController extends Controller with SecureSocial {
                 case JsObject(Seq(("user_id", JsString(ws_user_id)), ("alias", JsString(alias)))) =>
                     socketActor ! RequestAlias(userId, alias)
 
-                case js => println(s"  ???: received jsvalue $js")
+                case js => log.error(s"  ???: received jsvalue $js")
               }.mapDone {
                 _ => socketActor ! SocketClosed(userId)
               }
@@ -101,8 +91,6 @@ object AppController extends Controller with SecureSocial {
 
           }
       }.getOrElse(errorFuture)
-
-
   }
 
   def javascriptRoutes = SecuredAction {
@@ -114,26 +102,15 @@ object AppController extends Controller with SecureSocial {
       ).as("text/javascript")
   }
 
-  def testApp = SecuredAction { implicit request =>
-
-    val user = SecureSocial.currentUser.get // fuck it
-
-    val alias_key = s"user:${uidFromIdentityId(user.identityId)}:alias"
-
-    val fAlias = for {
-      alias_option <- redis.get[String](alias_key)
-    } yield alias_option
-
-
-    AsyncResult( fAlias.map(alias => Ok(views.js.app.testApp(user, alias)) ) )
-
+/*
+  def testApp = SecuredAction {
+    implicit request =>
+      Ok(views.js.app.testApp())
   }
 
-
-
-
-
-
+  
+  */
+  
 
 
   def errorFuture = {
