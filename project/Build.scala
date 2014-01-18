@@ -3,17 +3,13 @@ import Keys._
 import play.Project._
 
 object ApplicationBuild extends Build {
-
   val appName = "ClockworkSemaphore"
   val appVersion = "1.0"
   
-  
-  
-  
+
   val securesocial = "securesocial" %% "securesocial" % "master-SNAPSHOT" //
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.0.5" //functional programming voodoo
   val scredis = "com.livestream" %% "scredis" % "1.0.1" //redis wrapper
-  
   
 
   val appDependencies = Seq(

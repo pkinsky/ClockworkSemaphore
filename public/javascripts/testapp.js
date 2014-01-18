@@ -1,4 +1,4 @@
-/*dynamic navbar offset
+//dynamic navbar offset
 
 $(window).resize(function () {
    $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
@@ -7,7 +7,7 @@ $(window).resize(function () {
 $(window).load(function () {
    $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
 });
-*/
+
 
 var app = angular.module('app', []);
 
@@ -54,23 +54,30 @@ function AppCtrl($scope, ChatService) {
   ChatService.connect();
 
   //map of user_id => object describing public components of user
-  $scope.users = {};
+  $scope.init = function (current_user, user_info) {
+    $scope.current_user = current_user;
+    $scope.users = user_info;
+  }
+
+  //init to null (binding in init)
+  $scope.users = null;
+  $scope.current_user = null;
 
   $scope.signup_complete = function () {
-    return $scope.current_user.alias.length != 0;
+    return $scope.users[$scope.current_user].alias.length != 0;
   };
 
 
   $scope.messages = [];
 
-    //no error when commented out..?
 
   $scope.set_alias = function() {
-    console.log("TEST TEST TEST");
     var alias_in = $("#alias").val();
     console.log("setting alias: " + alias_in);
     ChatService.send( {user_id:$scope.user_id, alias:alias_in} );
   };
+
+
 
 
   ChatService.subscribe(function(message) {
@@ -79,18 +86,31 @@ function AppCtrl($scope, ChatService) {
 
             if ('msg' in actual){
                 var msg = actual['msg']
-                msg['show'] = true; //will show messages pushed to ignored topics
-                $scope.messages.push((msg));
+                $scope.messages.unshift(msg);
+
+                $scope.messages.sort(function(a,b){
+                  return a.item1 > b.item1 ? 1 : -1;
+                });
+
+
+                if (!$scope.users.hasOwnProperty(msg.user_id)){
+                    console.log("request info for " + msg.user_id);
+                    ChatService.send( {user_id: msg.user_id} );
+                }
+
             }
 
             if ('user_info' in actual){
-                //add new users to $scope.users
+                console.log("update!");
+
+                var user_info = actual['user_info'];
+
+                $scope.users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url};
             }
 
             if ('alias_result' in actual){
                 if (actual['alias_result']['pass']){
-                    $scope.alias = actual['alias_result']['alias'];
-                    $scope.aliases[actual['alias_result']['user_id']] = actual['alias_result']['alias'];
+                    $scope.users[$scope.current_user].alias = actual['alias_result']['alias'];
                 } else {
                     alert("alias taken: " +  actual['alias_result']['alias']);
                 }

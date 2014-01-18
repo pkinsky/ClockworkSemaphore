@@ -10,6 +10,91 @@
 @border-width:1px;
 @border-color:@asphalt;
 
+
+ul {
+  list-style: none;
+  padding: 0;
+
+  li {
+    position: relative;
+    min-height: 2em;
+    padding: .3em .3em .3em 1.5em;
+    transition:
+      background .3s ease-in-out,
+      color .3s ease-in-out,
+      box-shadow .1s ease-in-out,
+      height .25s ease-in-out
+   ;
+
+    button {
+      position: absolute;
+      left: 1.45em;
+      bottom: .35em;
+      opacity: 0;
+      height: 0;
+      border: none;
+      font-size: .8em;
+      cursor: pointer;
+      transition: all .4s ease-in-out;
+    }
+
+    &:before {
+      position: absolute;
+      top: .425em;
+      font-family: 'FontAwesome', sans-serif;
+      margin: 0 .35em 0 -1.35em;
+      vertical-align: bottom;
+    }
+    &:hover {
+      button {
+        opacity: 1;
+        height: 2em;
+      }
+
+      &:before {
+        color: rgba(255, 255, 255, 1);
+        right: 0;
+        transform: scale(2.5, 2.5) translate(-.25em, .15em);
+      }
+      &:after {
+        position: absolute;
+        content: attr(data-text);
+      }
+    }
+  }
+}
+
+.downloads {
+  li {
+    border-bottom: .15em solid rgba(0, 0, 0, .3);
+
+    &:before {
+      /* fontawesome-download-alt */
+      content: "\f019";
+      color: rgba(50, 50, 50, .5);
+    }
+    &:hover {
+      background: rgba(0, 140, 0, .7);
+      height: 4em;
+
+      &:after {
+        right: .35em;
+      }
+
+      &:before {
+        color: rgba(255, 255, 255, .2);
+      }
+    }
+  }
+}
+
+
+
+
+/*
+
+
+
 .container {
   text-align: center;
   margin-bottom: 40px;
@@ -73,3 +158,5 @@ a.list-group-item {
         background-color:@asphalt;
     }
 }
+
+*/

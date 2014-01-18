@@ -10,7 +10,7 @@ import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import actors._
 import akka.actor.Props
@@ -27,47 +27,35 @@ import service._
 
 
 object AppController extends Controller with SecureSocial {
+  lazy val log = Logger("application." + this.getClass.getName)
 
   implicit val timeout = Timeout(2 second)
-
-
   val socketActor = Akka.system.actorOf(Props[SocketActor])
-
-
-
-  lazy val log = Logger("application." + this.getClass.getName)
 
 
   def index = SecuredAction  {
     implicit request => {
-
       val user = SecureSocial.currentUser.get //fuckit
-
       val user_id = RedisService.idToString(user.identityId)
 
-      Ok(views.html.app.index(user_id))
+      val alias =  Await.result(RedisService.get_alias(user.identityId), 1 second) //ugh
+
+      Ok(views.html.app.index(user_id, alias.getOrElse(""), user.avatarUrl.getOrElse("")))
     }
   }
 
-
-
-  
 
   /**
    * This function creates a WebSocket using the
    * enumerator linked to the current user,
    * retrieved from the TaskActor.
    */
-  def indexWS = WebSocket.async[JsValue]{
-
-    (request: RequestHeader) =>
-
-      implicit val rHeader = request
+  def indexWS = WebSocket.async[JsValue] {
+    implicit requestHeader =>
 
       SecureSocial.currentUser.map{u =>
 
         val userId = u.identityId
-
 
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
@@ -78,8 +66,12 @@ object AppController extends Controller with SecureSocial {
 
                 case JsString("ACK") => socketActor ! AckSocket(userId)
 
-                //why send ws_user_id?
-                case JsObject(Seq(("user_id", JsString(ws_user_id)), ("alias", JsString(alias)))) =>
+
+                case JsObject(Seq(("user_id", JsString(id)))) =>
+                  socketActor ! RequestInfo(userId, RedisService.stringToId(id))
+
+
+                case JsObject(Seq(("alias", JsString(alias)))) =>
                     socketActor ! RequestAlias(userId, alias)
 
                 case js => log.error(s"  ???: received jsvalue $js")
@@ -88,7 +80,6 @@ object AppController extends Controller with SecureSocial {
               }
 
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
-
           }
       }.getOrElse(errorFuture)
   }
@@ -102,17 +93,6 @@ object AppController extends Controller with SecureSocial {
       ).as("text/javascript")
   }
 
-/*
-  def testApp = SecuredAction {
-    implicit request =>
-      Ok(views.js.app.testApp())
-  }
-
-  
-  */
-  
-
-
   def errorFuture = {
     val in = Iteratee.ignore[JsValue]
     val out = Enumerator(Json.toJson("not authorized")).andThen(Enumerator.eof)
@@ -124,4 +104,3 @@ object AppController extends Controller with SecureSocial {
   
   
 }
-

@@ -168,7 +168,7 @@ object RedisService {
         for {
           id <- id_opt
           alias <- alias_opt
-        } yield PublicIdentity(id.identityId, alias, id.avatarUrl)
+        } yield PublicIdentity(idToString(id.identityId), alias, id.avatarUrl)
     }
   }
 

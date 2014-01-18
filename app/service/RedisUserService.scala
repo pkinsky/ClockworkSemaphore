@@ -45,11 +45,6 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
 
 
-
-
-
-
-
   def find(id: IdentityId): Option[Identity] = {
 
     log.debug(s"find $id")
