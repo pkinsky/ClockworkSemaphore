@@ -9,6 +9,8 @@ object ApplicationBuild extends Build {
 
   val securesocial = "securesocial" %% "securesocial" % "master-SNAPSHOT" //
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.0.5" //functional programming voodoo
+  val scalaz_concurrent = "org.scalaz" %% "scalaz-concurrent" % "7.0.5" //functional programming voodoo
+
   val scredis = "com.livestream" %% "scredis" % "1.0.1" //redis wrapper
   
 
@@ -20,7 +22,8 @@ object ApplicationBuild extends Build {
     //"com.typesafe.akka" %% "akka-testkit" % "2.1.0",
     scredis,
     scalaz,
-	securesocial	
+    scalaz_concurrent,
+	  securesocial
   )
 
 

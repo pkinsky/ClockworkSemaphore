@@ -14,27 +14,21 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
-import service.{RedisService, RedisUserService}
-import RedisService.{idToString, stringToId}
+import service.{RedisServiceImpl, RedisUserService, RedisService}
+import scalaz.concurrent.Task
 
 
 import securesocial.core._
-import actors.RequestAlias
-import securesocial.core.OAuth1Info
-import securesocial.core.IdentityId
-import actors.AckSocket
-import scala.util.Failure
-import play.api.libs.json.JsString
-import scala.Some
-import actors.StartSocket
-import securesocial.core.OAuth2Info
-import scala.util.Success
-import securesocial.core.PasswordInfo
-import play.api.libs.json.JsObject
-import actors.SocketClosed
 
+import service.ScalaFutureConverters._
+
+import service.IdentityIdConverters._
 
 class SocketActor extends Actor {
+
+  val redisService: RedisService = RedisServiceImpl
+
+
   case class UserChannel(user_id: IdentityId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
   lazy val log = Logger("application." + this.getClass.getName)
@@ -62,8 +56,6 @@ class SocketActor extends Actor {
 
   def onRecentPosts(posts: Seq[Msg], user_id: IdentityId) = {
 
-    import RedisService.idToString
-
     posts.reverse.foreach{ msg =>
       webSockets(user_id).channel push Update(
         msg = Some(msg)
@@ -85,12 +77,12 @@ class SocketActor extends Actor {
     case AckSocket(user_id) =>
       log.debug(s"ack socket $user_id")
 
-      val result = for {
-        posts <- RedisService.recent_posts
+      val result: Task[Seq[Msg]] = for {
+        posts <- redisService.recent_posts_as_task
         //users <- Future.sequence(posts.map(p => RedisService.get_public_user(p.user_id).map(_.get)))
       } yield posts //users.zip(posts)
 
-      result.onComplete{
+      result.asFuture.onComplete{
         case Success(messages) =>   onRecentPosts(messages, user_id)
         case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
@@ -100,13 +92,9 @@ class SocketActor extends Actor {
     case RequestAlias(user_id, alias) =>
         log.info(s"user $user_id requesting alias $alias")
 
-        val alias_f = RedisService.establish_alias(user_id, alias)
+        val alias_f = redisService.establish_alias_as_task(user_id, alias)
 
-        alias_f.foreach{ alias_pass =>
-
-              }
-
-        alias_f.map(result => AckRequestAlias(alias, result)).onComplete{
+        alias_f.map(result => AckRequestAlias(alias, result)).asFuture.onComplete{
           case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
           case Failure(t) => log.error(s"error requesting alias: $t")
         }
@@ -114,7 +102,7 @@ class SocketActor extends Actor {
 
 
     case RequestInfo(requester, user_id) =>
-        RedisService.get_public_user(user_id).onComplete{
+        RedisServiceImpl.get_public_user(user_id).onComplete{
           case Success(Some(user_info)) => webSockets(requester).channel push Update(user_info = Some(user_info)).asJson
           case Success(None) => log.error(s"user info for $user_id not found");
           case Failure(t) => log.error(s"error: ${t}");
@@ -123,7 +111,7 @@ class SocketActor extends Actor {
 
 
     case message@Msg(user_id, msg) =>
-        RedisService.post(user_id, msg).onComplete{ _ =>
+        RedisServiceImpl.post(user_id, msg).onComplete{ _ =>
                 webSockets(user_id).channel push Update(
                   Some(message),
                   None

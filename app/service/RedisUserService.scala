@@ -49,7 +49,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
     log.debug(s"find $id")
 
-    val fJson = RedisService.get_user(id)
+    val fJson = RedisServiceImpl.get_user(id)
     val json = Await.result(fJson, 1 second)
 
     json
@@ -59,7 +59,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
   //oh god this is awful
   def save(user: Identity): Identity = {
 
-    Await.result(RedisService.save_user(user), 1 second)
+    Await.result(RedisServiceImpl.save_user(user), 1 second)
 
     user
   }

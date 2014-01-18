@@ -35,12 +35,12 @@ object AppController extends Controller with SecureSocial {
 
   def index = SecuredAction  {
     implicit request => {
-      val user = SecureSocial.currentUser.get //fuckit
-      val user_id = RedisService.idToString(user.identityId)
 
-      val alias =  Await.result(RedisService.get_alias(user.identityId), 1 second) //ugh
+      val user_id = SecureSocial.currentUser.get.identityId
 
-      Ok(views.html.app.index(user_id, alias.getOrElse(""), user.avatarUrl.getOrElse("")))
+      val user =  Await.result(RedisServiceImpl.get_public_user(user_id), 1 second).get //ugh
+
+      Ok(views.html.app.index(RedisServiceImpl.idToString(user_id), user.alias, user.avatar_url.getOrElse("")))
     }
   }
 
@@ -68,7 +68,7 @@ object AppController extends Controller with SecureSocial {
 
 
                 case JsObject(Seq(("user_id", JsString(id)))) =>
-                  socketActor ! RequestInfo(userId, RedisService.stringToId(id))
+                  socketActor ! RequestInfo(userId, RedisServiceImpl.stringToId(id))
 
 
                 case JsObject(Seq(("alias", JsString(alias)))) =>
