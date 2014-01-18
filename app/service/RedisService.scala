@@ -2,21 +2,21 @@ package service
 
 import securesocial.core.{Identity, IdentityId}
 import actors.{Msg, PublicIdentity}
-import scalaz.concurrent.Task
+import scala.concurrent.Future
 
 trait RedisService {
 
-  def get_followers_as_task(user_id: IdentityId): Task[Set[String]]
+  def get_followers(user_id: IdentityId): Future[Set[String]]
 
-  def save_user_as_task(user: Identity): Task[Unit]
+  def save_user(user: Identity): Future[Unit]
 
-  def get_user_as_task(user_id: IdentityId): Task[Identity]
+  def get_user(user_id: IdentityId): Future[Identity]
 
-  def get_public_user_as_task(user_id: IdentityId): Task[PublicIdentity]
+  def get_public_user(user_id: IdentityId): Future[PublicIdentity]
 
-  def post_as_task(user_id: IdentityId, msg: String): Task[String]
+  def post(user_id: IdentityId, msg: String): Future[String]
 
-  def recent_posts_as_task: Task[Seq[Msg]]
+  def recent_posts: Future[Seq[Msg]]
 
-  def establish_alias_as_task(user_id: IdentityId, alias: String): Task[Boolean]
+  def establish_alias(user_id: IdentityId, alias: String): Future[Boolean]
 }

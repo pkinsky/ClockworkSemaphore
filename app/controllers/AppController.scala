@@ -38,7 +38,7 @@ object AppController extends Controller with SecureSocial {
 
       val user_id = SecureSocial.currentUser.get.identityId
 
-      val user =  Await.result(RedisServiceImpl.get_public_user(user_id), 1 second).get //ugh
+      val user =  Await.result(RedisServiceImpl.get_public_user(user_id), 1 second) //ugh
 
       Ok(views.html.app.index(RedisServiceImpl.idToString(user_id), user.alias, user.avatar_url.getOrElse("")))
     }

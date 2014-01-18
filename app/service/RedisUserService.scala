@@ -49,7 +49,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
 
     log.debug(s"find $id")
 
-    val fJson = RedisServiceImpl.get_user(id)
+    val fJson = RedisServiceImpl.get_user(id).map(Some(_)).recover{ case _ => None}
     val json = Await.result(fJson, 1 second)
 
     json

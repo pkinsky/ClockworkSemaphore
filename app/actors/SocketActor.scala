@@ -15,12 +15,10 @@ import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
 import service.{RedisServiceImpl, RedisUserService, RedisService}
-import scalaz.concurrent.Task
 
 
 import securesocial.core._
 
-import service.ScalaFutureConverters._
 
 import service.IdentityIdConverters._
 
@@ -77,12 +75,11 @@ class SocketActor extends Actor {
     case AckSocket(user_id) =>
       log.debug(s"ack socket $user_id")
 
-      val result: Task[Seq[Msg]] = for {
-        posts <- redisService.recent_posts_as_task
-        //users <- Future.sequence(posts.map(p => RedisService.get_public_user(p.user_id).map(_.get)))
-      } yield posts //users.zip(posts)
+      val result = for {
+        posts <- redisService.recent_posts
+      } yield posts
 
-      result.asFuture.onComplete{
+      result.onComplete{
         case Success(messages) =>   onRecentPosts(messages, user_id)
         case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
@@ -92,9 +89,9 @@ class SocketActor extends Actor {
     case RequestAlias(user_id, alias) =>
         log.info(s"user $user_id requesting alias $alias")
 
-        val alias_f = redisService.establish_alias_as_task(user_id, alias)
+        val alias_f = redisService.establish_alias(user_id, alias)
 
-        alias_f.map(result => AckRequestAlias(alias, result)).asFuture.onComplete{
+        alias_f.map(result => AckRequestAlias(alias, result)).onComplete{
           case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
           case Failure(t) => log.error(s"error requesting alias: $t")
         }
@@ -102,16 +99,15 @@ class SocketActor extends Actor {
 
 
     case RequestInfo(requester, user_id) =>
-        RedisServiceImpl.get_public_user(user_id).onComplete{
-          case Success(Some(user_info)) => webSockets(requester).channel push Update(user_info = Some(user_info)).asJson
-          case Success(None) => log.error(s"user info for $user_id not found");
+      redisService.get_public_user(user_id).onComplete{
+          case Success(user_info) => webSockets(requester).channel push Update(user_info = Some(user_info)).asJson
           case Failure(t) => log.error(s"error: ${t}");
         }
 
 
 
     case message@Msg(user_id, msg) =>
-        RedisServiceImpl.post(user_id, msg).onComplete{ _ =>
+        redisService.post(user_id, msg).onComplete{ _ =>
                 webSockets(user_id).channel push Update(
                   Some(message),
                   None

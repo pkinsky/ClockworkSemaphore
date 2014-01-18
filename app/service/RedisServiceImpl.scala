@@ -34,15 +34,11 @@ import play.api.libs.json.JsObject
 import actors.Msg
 import scala.util.{Success, Failure}
 
-import scalaz.concurrent.Task
 
 import  scalaz._
 import  Scalaz.ToIdOps
 
 import service.RedisService
-
-
-import ScalaFutureConverters._
 
 
 
@@ -152,51 +148,31 @@ object RedisServiceImpl extends RedisService{
   }
 
 
-  def get_user_as_task(user_id: IdentityId): Task[Identity] =
-    get_user(user_id).asTask.flatMap{
-      case Some(id) => Monad[Task].point(id)
-      case None => Task.fail(new Exception(s"user id $user_id not found"))
-    }
 
-
-
-  def get_user(user_id: IdentityId): Future[Option[Identity]] =
+  def get_user(user_id: IdentityId): Future[Identity] =
     redis.get[JsValue](s"user:${idToString(user_id)}:identity")(parser=ParseJs).map{ json =>
       log.info(s"get_user($user_id) result: $json")
       for {
         js <- json
         res <- Json.fromJson[Identity](js).asOpt
       } yield res
+    }.flatMap{
+      case Some(u) => Applicative[Future].point(u)
+      case None => Future.failed(new Exception(s"user id $user_id not found"))
     }
 
-  def get_public_user_as_task(user_id: IdentityId): Task[PublicIdentity] = {
 
-    //what happens if I filter a task? what does it contain if filter fails?
-    get_public_user(user_id).asTask.flatMap{
-      case Some(id) => Monad[Task].point(id)
-      case None => Task.fail(new Exception(s"user id $user_id not found"))
-    }
-
-  }
-
-
-  def get_public_user(user_id: IdentityId): Future[Option[PublicIdentity]] = {
+  def get_public_user(user_id: IdentityId): Future[PublicIdentity] = {
     for {
-      id_opt <- get_user(user_id)
-      alias_opt <- get_alias(user_id)
+      id <- get_user(user_id)
+      alias <- get_alias(user_id)
     } yield {
-        log.info(s"get_public_user for $user_id results: $id_opt, $alias_opt")
-        for {
-          id <- id_opt
-          alias <- alias_opt
-        } yield PublicIdentity(idToString(id.identityId), alias, id.avatarUrl)
+        log.info(s"get_public_user for $user_id results: $id, $alias")
+        PublicIdentity(idToString(id.identityId), alias, id.avatarUrl)
     }
   }
 
 
-
-  def save_user_as_task(user: Identity): Task[Unit] =
-    save_user(user).asTask
 
 
   def save_user(user: Identity): Future[Unit] = {
@@ -206,9 +182,12 @@ object RedisServiceImpl extends RedisService{
     redis.set(s"user:${idToString(user.identityId)}:identity", user_json)
   }
 
-  private def get_alias(user_id: IdentityId) = redis.get[String](user_alias(user_id))
+  private def get_alias(user_id: IdentityId): Future[String] =
+    redis.get[String](user_alias(user_id)).flatMap{
+      case Some(s) => Applicative[Future].point(s)
+      case None => Future.failed(new Exception(s"alias for user $user_id not found"))
+    }
 
-  def establish_alias_as_task(user_id: IdentityId, alias: String): Task[Boolean] = establish_alias(user_id, alias).asTask
 
   def establish_alias(user_id: IdentityId, alias: String) = {
     val alias_f = redis.sAdd("global:aliases", alias).map(_==1L)
@@ -223,7 +202,6 @@ object RedisServiceImpl extends RedisService{
   private def next_post_id: Future[String] = redis.incr("global:nextPostId").map(_.toString)
 
 
-  def recent_posts_as_task: Task[Seq[Msg]] = recent_posts.asTask
 
   //fuck this method, srsly
   def recent_posts: Future[Seq[Msg]] =
@@ -241,14 +219,10 @@ object RedisServiceImpl extends RedisService{
 
 
 
-  def get_followers_as_task(user_id: IdentityId): Task[Set[String]] = get_followers(user_id).asTask
 
   def get_followers(user_id: IdentityId): Future[Set[String]] = {
     redis.sMembers[String](user_followers(user_id))
   }
-
-  def post_as_task(user_id: IdentityId, msg: String): Task[String] =
-    post(user_id, msg).asTask
 
   def post(user_id: IdentityId, msg: String): Future[String] = {
 

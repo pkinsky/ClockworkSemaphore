@@ -22,7 +22,6 @@ object ApplicationBuild extends Build {
     //"com.typesafe.akka" %% "akka-testkit" % "2.1.0",
     scredis,
     scalaz,
-    scalaz_concurrent,
 	  securesocial
   )
 
