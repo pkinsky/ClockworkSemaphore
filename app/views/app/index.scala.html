@@ -33,52 +33,25 @@
 
 
 
-    <div class="row">
+<div class="row">
 
-
-    <div class="col-md-4 col-xs-4">
-        <div>
-            <h2>Downloads</h2>
-            <ul class="downloads">
-                <li data-text="13.37 GB">
-                    Appliness
-                    <button class="fontawesome-download-alt"> get this file</button>
-                </li>
-                <li data-text="42 MB">
-                    Sublime Text
-                    <button class="fontawesome-download-alt"> get this file</button>
-                </li>
-                <li data-text="8 KB">
-                    Google Chrome
-                    <button class="fontawesome-download-alt"> get this file</button>
-                </li>
-                <li data-text="666 TB">
-                    Windows 9
-                    <button class="fontawesome-download-alt"> get this file</button>
-                </li>
-            </ul>
-        </div>
-    </div>
 
 
     <div class="col-md-8 col-xs-8">
     <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
-        <i class="fa fa-quote-left fa-2x quotes"></i>
-        &nbsp;
-        <input type="text" ng-model="text" placeholder="> input message" class="message" id="tweeter"></input>
-        &nbsp;
-        <i class="fa fa-quote-right fa-2x quotes"></i>
+        <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
+        <br>
+        <input type="submit" class="form-control" />
     </form>
 
     <form class="form-inline" ng-submit="set_alias()" ng-if="!signup_complete()" >
-        <input type="text" placeholder="pick a pseudonym" id="alias">
-        <input type="submit" value="Submit">
+        <input type="text" placeholder="pick a pseudonym" class="form-control" id="alias">
     </form>
 
     <br>
 
 
-        <div class="panel panel-default" ng-repeat="message in messages">
+        <div class="panel panel-tweet" ng-repeat="message in messages">
             <div class="panel-heading">
                 <img ng-src="{{users[message.user_id].avatar_url}}" class="img-rounded">
                 {{ users[message.user_id].alias }}
@@ -99,7 +72,7 @@
 
 
     </div>
-    </div>
+</div>
 
 
 </div>

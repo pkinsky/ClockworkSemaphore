@@ -89,7 +89,7 @@ function AppCtrl($scope, ChatService) {
                 $scope.messages.unshift(msg);
 
                 $scope.messages.sort(function(a,b){
-                  return a.item1 > b.item1 ? 1 : -1;
+                  return a.timestamp < b.timestamp ? 1 : -1;
                 });
 
 

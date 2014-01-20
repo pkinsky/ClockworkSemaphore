@@ -21,6 +21,18 @@ import securesocial.core._
 
 
 import service.IdentityIdConverters._
+import actors.RequestAlias
+import securesocial.core.IdentityId
+import actors.AckSocket
+import scala.util.Failure
+import play.api.libs.json.JsString
+import scala.Some
+import play.api.libs.json.JsNumber
+import actors.StartSocket
+import actors.RequestInfo
+import scala.util.Success
+import play.api.libs.json.JsObject
+import actors.SocketClosed
 
 class SocketActor extends Actor {
 
@@ -88,12 +100,18 @@ class SocketActor extends Actor {
 
     case RequestAlias(user_id, alias) =>
         log.info(s"user $user_id requesting alias $alias")
+        val trimmed = alias.trim
 
-        val alias_f = redisService.establish_alias(user_id, alias)
+        if (trimmed.contains(" ")){ //seperate validation somehow
+          log.info(s"bad user id: $user_id")
+        } else {
 
-        alias_f.map(result => AckRequestAlias(alias, result)).onComplete{
-          case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
-          case Failure(t) => log.error(s"error requesting alias: $t")
+          val alias_f = redisService.establish_alias(user_id, trimmed)
+
+          alias_f.map(result => AckRequestAlias(trimmed, result)).onComplete{
+            case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
+            case Failure(t) => log.error(s"error requesting alias: $t")
+          }
         }
 
 
@@ -106,8 +124,8 @@ class SocketActor extends Actor {
 
 
 
-    case message@Msg(user_id, msg) =>
-        redisService.post(user_id, msg).onComplete{ _ =>
+    case message@Msg(timestamp, user_id, msg) =>
+        redisService.post(message).onComplete{ _ =>
                 webSockets(user_id).channel push Update(
                   Some(message),
                   None
@@ -161,16 +179,18 @@ object Msg {
   implicit val format = new Format[Msg]{
     def writes(msg: Msg): JsValue = {
       JsObject(Seq(
+        ("timestamp", JsNumber(msg.timestamp)),
         ("user_id", JsString(idToString(msg.user_id))),
-        ("msg", JsString(msg.msg))
+        ("msg", JsString(msg.body))
       ))
     }
 
     def reads(json: JsValue): JsResult[Msg] =
       for{
+        timeStamp <- Json.fromJson[Long](json \ "timestamp")
         identityId <- Json.fromJson[String](json \ "user_id").map(stringToId(_))
         msg <- Json.fromJson[String](json \ "msg")
-      } yield Msg(identityId, msg)
+      } yield Msg(timeStamp,identityId, msg)
 
 
 
@@ -193,7 +213,7 @@ object Update {
 }
 
 //todo: add post id to Msg for absolute ordering
-case class Msg(user_id: IdentityId, msg: String) extends JsonMessage with SocketMessage{
+case class Msg(timestamp: Long, user_id: IdentityId, body: String) extends JsonMessage with SocketMessage{
   def asJson = Json.toJson(this)
 }
 

@@ -7,156 +7,59 @@
 @asphalt:#34495E;
 
 
+
+
+@belize-hole:#2980B9;
+@peter-river:#3498DB;
+
+
+
+@text-main:@clouds;
+
+
+@panel-background:@belize-hole;
+@header-background:@peter-river;
+
 @border-width:1px;
 @border-color:@asphalt;
 
-
-ul {
-  list-style: none;
-  padding: 0;
-
-  li {
-    position: relative;
-    min-height: 2em;
-    padding: .3em .3em .3em 1.5em;
-    transition:
-      background .3s ease-in-out,
-      color .3s ease-in-out,
-      box-shadow .1s ease-in-out,
-      height .25s ease-in-out
-   ;
-
-    button {
-      position: absolute;
-      left: 1.45em;
-      bottom: .35em;
-      opacity: 0;
-      height: 0;
-      border: none;
-      font-size: .8em;
-      cursor: pointer;
-      transition: all .4s ease-in-out;
-    }
-
-    &:before {
-      position: absolute;
-      top: .425em;
-      font-family: 'FontAwesome', sans-serif;
-      margin: 0 .35em 0 -1.35em;
-      vertical-align: bottom;
-    }
-    &:hover {
-      button {
-        opacity: 1;
-        height: 2em;
-      }
-
-      &:before {
-        color: rgba(255, 255, 255, 1);
-        right: 0;
-        transform: scale(2.5, 2.5) translate(-.25em, .15em);
-      }
-      &:after {
-        position: absolute;
-        content: attr(data-text);
-      }
-    }
-  }
-}
-
-.downloads {
-  li {
-    border-bottom: .15em solid rgba(0, 0, 0, .3);
-
-    &:before {
-      /* fontawesome-download-alt */
-      content: "\f019";
-      color: rgba(50, 50, 50, .5);
-    }
-    &:hover {
-      background: rgba(0, 140, 0, .7);
-      height: 4em;
-
-      &:after {
-        right: .35em;
-      }
-
-      &:before {
-        color: rgba(255, 255, 255, .2);
-      }
-    }
-  }
+.panel-tweet {
+    border-color:@asphalt !important;
 }
 
 
-
-
-/*
-
-
-
-.container {
-  text-align: center;
-  margin-bottom: 40px;
+.panel {
+    background-color:@panel-background !important;
+    color:@text-main !important;
 }
 
-body{
-    padding-top:50px;
+
+.panel-heading {
+    background-color:@header-background !important;
+    border-color:@asphalt !important;
+    color:@text-main !important;
 }
 
+
+#main-navbar {
+    background-color:@header-background !important;
+    border-color:@asphalt !important;
+    color:@text-main !important;
+}
+
+
+.navbar-brand{
+                 background-color:@header-background !important;
+                 border-color:@asphalt !important;
+                 color:@text-main !important;
+}
 
 .quotes {
     color:@concrete;
 }
 
-#tweeter{
-    padding: 6px;
-    font-size: 20px;
+
+.form-control{
+     width: 100% !important;
+     horizontal-align: 0 auto !important;
 }
-
-@belize-hole:#2980B9;
-@peter-river:#3498DB;
-@text-main:@clouds;
-
-
-#badge {
-    color:@belize-hole;
-}
-
-#main-navbar {
-    text-align:center;
-}
-
-.list-group-item {
-    border-color:@border-color;
-
-    border-width:@border-width;
-
-
-
-
-    background-color:@belize-hole;
-    color:@text-main;
-    text-align:left;
-
-    &:hover { background-color:@peter-river; }
-}
-
-a.list-group-item {
-    border-color:@border-color;
-
-    border-width:@border-width;
-
-    text-align:left;
-    background-color:@belize-hole;
-    color:@text-main;
-
-    &:hover { background-color:@peter-river; }
-
-    .badge {
-        color:@clouds;
-        background-color:@asphalt;
-    }
-}
-
-*/

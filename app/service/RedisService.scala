@@ -14,7 +14,7 @@ trait RedisService {
 
   def get_public_user(user_id: IdentityId): Future[PublicIdentity]
 
-  def post(user_id: IdentityId, msg: String): Future[String]
+  def post(msg: Msg): Future[String]
 
   def recent_posts: Future[Seq[Msg]]
 

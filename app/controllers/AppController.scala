@@ -62,7 +62,8 @@ object AppController extends Controller with SecureSocial {
 
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
-                    socketActor ! Msg(userId, msg)
+                    val current_time = System.currentTimeMillis
+                    socketActor ! Msg(current_time, userId, msg)
 
                 case JsString("ACK") => socketActor ! AckSocket(userId)
 

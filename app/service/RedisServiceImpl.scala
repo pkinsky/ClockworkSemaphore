@@ -1,5 +1,8 @@
 package service
 
+
+import java.lang.Long.parseLong
+
 import java.net.URI
 import scredis.Redis
 import com.typesafe.config.{ConfigValueFactory, ConfigFactory}
@@ -35,13 +38,13 @@ import actors.Msg
 import scala.util.{Success, Failure}
 
 
-import  scalaz._
+import  scalaz._, std.option._, std.tuple._, syntax.bitraverse._
+
 import  Scalaz.ToIdOps
 
 import service.RedisService
 
-
-
+import IdentityIdConverters._
 
 
 
@@ -50,6 +53,9 @@ object RedisServiceImpl extends RedisService{
 
 
 
+  
+  //ALL THIS SHIT. ALL OF IT. GONE. BECAUSE HASHMAPS!
+  
   private implicit val format1 = Json.format[IdentityId]
   private implicit val format2 = Json.format[AuthenticationMethod]
   private implicit val format3 = Json.format[OAuth1Info]
@@ -117,8 +123,11 @@ object RedisServiceImpl extends RedisService{
 
   private val global_timeline = "global:timeline"  //list
 
-  private def post_body(post_id: String) = s"post:$post_id:body"
-  private def post_author(post_id: String) = s"post:$post_id:author"
+
+  
+  private def post_info(post_id: String) = s"post:$post_id:info"
+  
+  
 
   private def user_alias(user_id: IdentityId) = s"user:${idToString(user_id)}:alias"
 
@@ -168,7 +177,7 @@ object RedisServiceImpl extends RedisService{
       alias <- get_alias(user_id)
     } yield {
         log.info(s"get_public_user for $user_id results: $id, $alias")
-        PublicIdentity(idToString(id.identityId), alias, id.avatarUrl)
+        PublicIdentity(idToString(id.identityId), alias.getOrElse(""), id.avatarUrl)
     }
   }
 
@@ -182,14 +191,12 @@ object RedisServiceImpl extends RedisService{
     redis.set(s"user:${idToString(user.identityId)}:identity", user_json)
   }
 
-  private def get_alias(user_id: IdentityId): Future[String] =
-    redis.get[String](user_alias(user_id)).flatMap{
-      case Some(s) => Applicative[Future].point(s)
-      case None => Future.failed(new Exception(s"alias for user $user_id not found"))
-    }
+  private def get_alias(user_id: IdentityId): Future[Option[String]] =
+    redis.get[String](user_alias(user_id))
 
 
   def establish_alias(user_id: IdentityId, alias: String) = {
+
     val alias_f = redis.sAdd("global:aliases", alias).map(_==1L)
 
     alias_f.flatMap{
@@ -208,14 +215,9 @@ object RedisServiceImpl extends RedisService{
     for {
       timeline <- redis.lRange[String](global_timeline, 0, 50)
       posts <-  Future.sequence(timeline.map{post_id =>
-
-        for {
-          author <- redis.get[String](post_author(post_id))
-          b <- redis.get[String](post_body(post_id))
-        } yield (author.map(stringToId(_)), b)
-
+        load_post(post_id)
       })
-    } yield posts.map{case (Some(author), Some(post)) => Msg(author, post)} //fail horribly on failed lookup...
+    } yield posts
 
 
 
@@ -224,24 +226,46 @@ object RedisServiceImpl extends RedisService{
     redis.sMembers[String](user_followers(user_id))
   }
 
-  def post(user_id: IdentityId, msg: String): Future[String] = {
+  def load_post(post_id: String): Future[Msg] =
+    for {
+      map <- redis.hmGetAsMap[String](post_info(post_id))("timestamp", "author", "body")
+    } yield {
+      val result = for{
+        timestamp <- map.get("timestamp")
+        author <- map.get("author")
+        body <- map.get("body")
+      } yield Msg(parseLong(timestamp), author.asId, body)
+      result.get //fuckit
+    }
+
+  
+
+  def save_post(post_id: String, msg: Msg): Future[Unit] =
+    redis.hmSetFromMap(post_info(post_id), Map(
+				"timestamp" -> msg.timestamp,
+				"author" -> msg.user_id.asString,
+				"body" -> msg.body
+    ))
+
+
+
+  //need to use Msg object here, load_post will return Msg object as well. ditto for every object, 
+  //use a hashmap to speed lookup! multiple keys == multiple lookups!
+  def post(msg: Msg): Future[String] = {
 
     def trim_global = redis.lTrim(global_timeline,0,1000)
 
     def handle_post(post_id: String, audience: Set[String]) =
       (redis.lPush(global_timeline,post_id)
-        |@| redis.set(post_body(post_id), msg)
-        |@| redis.set(post_author(post_id), idToString(user_id))
+        |@| save_post(post_id, msg)
         |@| Future.sequence(
-        audience.map{u =>
-          redis.lPush(s"user:$u:posts", post_id)
-        }
-      )
-        ){ (a,b,c,d) => () }
+          audience.map{ u => redis.lPush(s"user:$u:posts", post_id) }
+        )
+        ){ (a,b,c) => () }
 
 
     for {
-      (post_id, followers) <- (next_post_id |@| get_followers(user_id))((a,b) => (a,b))
+      (post_id, followers) <- (next_post_id |@| get_followers(msg.user_id))((a,b) => (a,b))
       _ <- handle_post(post_id, followers)
       _ <- trim_global
     } yield post_id
