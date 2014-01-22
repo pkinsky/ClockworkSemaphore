@@ -84,7 +84,7 @@ class SocketActor extends Actor {
 
       redisService.recent_posts(user_id).onComplete{
         case Success(messages) => onRecentPosts(messages, user_id)
-        case Failure(t) => log.error(s"recent posts fail: ${t}");
+        case Failure(t) => log.error(s"recent posts fail: ${t.getStackTraceString}");
       }
 
 

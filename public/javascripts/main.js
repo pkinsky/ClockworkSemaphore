@@ -64,15 +64,33 @@ function AppCtrl($scope, ChatService) {
   //map of user_id => object describing public components of user
   $scope.init = function (current_user, user_info) {
     $scope.current_user = current_user;
-    $scope.users = user_info;
+    users = user_info;
   }
 
+
+  var users = {};
+  var fetching_users = [];
+
+  $scope.get_user = function(user_id) {
+    if (users.hasOwnProperty(user_id)){
+        return users[user_id];
+    } else {
+        if (_.contains(fetching_users, user_id)) {
+            return null;
+        } else {
+            fetching_users.push(user_id);
+            ChatService.send( {user_id: user_id} );
+        }
+    }
+  }
+
+
+
   //init to null (binding in init)
-  $scope.users = null;
   $scope.current_user = null;
 
   $scope.signup_complete = function () {
-    return $scope.users[$scope.current_user].alias.length != 0;
+    return users[$scope.current_user].alias.length != 0;
   };
 
 
@@ -91,10 +109,12 @@ function AppCtrl($scope, ChatService) {
                 msg['favorite'] = favorite;
                 $scope.messages.unshift(msg);
 
-                  if (!$scope.users.hasOwnProperty(msg.user_id)){
+                /*
+                  if (users.hasOwnProperty(msg.user_id)){
                       console.log("request info for " + msg.user_id);
                       ChatService.send( {user_id: msg.user_id} );
                   }
+                */
   }
 
 
@@ -151,12 +171,13 @@ function AppCtrl($scope, ChatService) {
             if ('user_info' in actual){
                 //console.log("update!");
                 var user_info = actual['user_info'];
-                $scope.users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url};
+                fetching_users = _.without(fetching_users, user_info.user_id);
+                users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url};
             }
 
             if ('alias_result' in actual){
                 if (actual['alias_result']['pass']){
-                    $scope.users[$scope.current_user].alias = actual['alias_result']['alias'];
+                    users[$scope.current_user].alias = actual['alias_result']['alias'];
                 } else {
                     alert("alias taken: " +  actual['alias_result']['alias']);
                 }

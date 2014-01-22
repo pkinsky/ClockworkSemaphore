@@ -15,7 +15,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="#">Hello {{ users[current_user].alias }}</a>
+            <a class="navbar-brand" href="#">Hello {{ get_user(current_user).alias }}</a>
         </div>
 
         <!-- Collect the nav links, forms, and other content for toggling
@@ -51,8 +51,8 @@
 
     <div class="panel panel-tweet" ng-repeat="message in messages">
         <div class="panel-heading">
-            <img ng-src="{{users[message.user_id].avatar_url}}" class="img-rounded">
-            {{ users[message.user_id].alias }}
+            <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded">
+            {{ get_user(message.user_id).alias }}
         </div>
         <div class="panel-body">
             {{ message.body }}
