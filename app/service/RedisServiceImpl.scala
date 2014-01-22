@@ -42,7 +42,6 @@ import  scalaz._, std.option._, std.tuple._, syntax.bitraverse._
 
 import  Scalaz.ToIdOps
 
-import service.RedisService
 
 import IdentityIdConverters._
 

@@ -3,5 +3,3 @@
 9997:securesocial.controllers.DefaultTemplatesPlugin
 9998:service.RedisUserService
 10000:securesocial.core.providers.TwitterProvider
-10002:securesocial.core.providers.GoogleProvider
-10005:securesocial.core.providers.GitHubProvider
