@@ -165,8 +165,6 @@ class SocketActor extends Actor {
 
     }
 
-
-
     case SocketClosed(user_id) =>
       log debug s"closed socket for $user_id"
       val userChannel = webSockets(user_id)
