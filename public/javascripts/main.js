@@ -17,14 +17,22 @@ app.factory('ChatService', function() {
 
   var service = {};
 
+
+  function ws_url(s) {
+      var l = window.location;
+      var r = ((l.protocol === "https:") ? "wss://" : "ws://") + l.hostname + (((l.port != 80) && (l.port != 443)) ? ":" + l.port : "") + l.pathname + s;
+      console.log(r);
+      return r;
+  }
+
   service.connect = function() {
     if(service.ws) { return; }
 
-    var ws = new WebSocket("ws://localhost:9000/websocket/");
+    var ws = new WebSocket(ws_url("websocket/"));
 
     ws.onopen = function() {
         console.log("ack websocket");
-      service.ws.send(JSON.stringify("ACK"));
+        service.ws.send(JSON.stringify("ACK"));
     };
 
     ws.onerror = function() {
