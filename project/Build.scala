@@ -7,7 +7,7 @@ object ApplicationBuild extends Build {
   val appVersion = "1.0"
   
 
-  val securesocial = "securesocial" %% "securesocial" % "master-SNAPSHOT" //
+  val securesocial = "securesocial" %% "securesocial" % "2.1.2" //
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.0.5" //functional programming voodoo
   val scalaz_concurrent = "org.scalaz" %% "scalaz-concurrent" % "7.0.5" //functional programming voodoo
 

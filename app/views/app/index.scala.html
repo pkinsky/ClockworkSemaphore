@@ -64,6 +64,7 @@
                 <i class="fa fa-star-o fa-6" ng-if="!message.favorite"></i>
                 <i class="fa fa-star fa-6" ng-if="message.favorite"></i>
             </a>
+            &nbsp
             <a ng-click="follow_user(message.user_id)" ng-if="message.user_id!=current_user">
                 <i class="fa fa-eye fa-6" ng-if="!following(message.user_id)"></i>
                 <i class="fa fa-eye-slash fa-6" ng-if="following(message.user_id)"></i>
