@@ -13,7 +13,7 @@ var app = angular.module('app', []);
 
 app.factory('ChatService', function() {
 
-   console.log("spinning up ChatService")
+  console.log("spinning up ChatService")
 
   var service = {};
 
@@ -28,11 +28,11 @@ app.factory('ChatService', function() {
   service.connect = function() {
     if(service.ws) { return; }
 
-    var ws = new WebSocket(ws_url("websocket/"));
+    var ws = new ReconnectingWebSocket(ws_url("websocket/"));
 
     ws.onopen = function() {
         console.log("ack websocket");
-        service.ws.send(JSON.stringify("ACK"));
+        service.ws.send(JSON.stringify("recent_posts"));
     };
 
     ws.onerror = function() {
@@ -75,8 +75,36 @@ function AppCtrl($scope, ChatService) {
     return $scope.users[$scope.current_user].alias.length != 0;
   };
 
+  //array of post-id's
+  $scope.followed_messages = [];
+  $scope.recent_messages = [];
 
-  $scope.messages = [];
+  //private map post_id => msginfo
+  var messages = {};
+
+  //load post or get from server. need to keep list of those post_ids being fetched to avoid double-dipping
+  $scope.load_message = function(post_id) {
+
+  }
+
+  $scope.show_followed_posts = function() {
+    $scope.show_recent = false;
+  }
+
+  $scope.show_recent_posts = function() {
+    $scope.show_recent = true;
+  }
+
+  //if true show recent if false show following. just fetch both at start...
+  $scope.show_recent = true;
+
+  $scope.get_messages = function() {
+      if ($scope.show_recent){
+        return $scope.recent_messages;
+      }else{
+        return $scope.followed_messages;
+      }
+  }
 
 
   $scope.set_alias = function() {
@@ -87,23 +115,49 @@ function AppCtrl($scope, ChatService) {
 
 
   $scope.push_message = function(post_id, favorite, msg) {
-                msg['post_id'] = post_id;
-                msg['favorite'] = favorite;
-                $scope.messages.unshift(msg);
+        msg['post_id'] = post_id;
+        msg['favorite'] = favorite;
+        messages[post_id] = msg;
 
-                  if (!$scope.users.hasOwnProperty(msg.user_id)){
-                      console.log("request info for " + msg.user_id);
-                      ChatService.send( {user_id: msg.user_id} );
-                  }
+        if (!$scope.users.hasOwnProperty(msg.user_id)){
+            console.log("request info for " + msg.user_id);
+            ChatService.send( {user_id: msg.user_id} );
+        }
   }
 
 
   $scope.delete_message = function(message) {
+    console.log("delete message");
     ChatService.send( {delete_message:message.post_id} );
     //remove msg from map? yeah why not bad removal only reflected client side anyway.
     //todo: wait on confirmation
 
   }
+
+
+  $scope.following = function(user_id) {
+    if (user_id in $scope.users){
+        return $scope.users[user_id].following;
+    }else{
+        return false;
+    }
+  }
+
+
+  $scope.follow_user = function(user_id) {
+    console.log("follow" + user_id);
+
+    if ($scope.users[user_id].following) {
+        $scope.users[user_id].following = false;
+        ChatService.send( {unfollow:user_id} );
+    }else{
+        $scope.users[user_id].following = true;
+        ChatService.send( {follow:user_id} );
+    }
+
+  }
+
+
 
   $scope.favorite_message = function(message) {
     console.log("favorite message: " + JSON.stringify(message))
@@ -123,14 +177,20 @@ function AppCtrl($scope, ChatService) {
   }
 
 
+  /*
+  TODO: recent/followed _messages should be simple lists of post ids. easy to keep sorted.
+        store actual messages in map {post_id => msg info}
+
+
+  */
+
+
   ChatService.subscribe(function(message) {
             console.log("msg: " + message);
             var actual = jQuery.parseJSON(message)
 
             if ('msg' in actual){
                 var messages = actual['msg'];
-
-
 
                 messages.forEach(function(msg_info) {
                     var post_id = msg_info.post_id;
@@ -139,14 +199,21 @@ function AppCtrl($scope, ChatService) {
                     console.log("pushing message for info " + msg_info)
                     $scope.push_message(post_id, favorite, msg);
                 });
-
-
-
-                $scope.messages.sort(function(a,b){
-                  return a.timestamp < b.timestamp ? 1 : -1;
-                });
             }
 
+            if ('recent_msg' in actual){
+                var recent = actual['recent_msg'];
+                recent.forEach(function(post_id){
+                    $scope.recent_messages.push(post_id);
+                })
+            }
+
+            if ('followed_msg' in actual){
+                var recent = actual['recent_msg'];
+                recent.forEach(function(post_id){
+                    $scope.followed_messages.push(post_id);
+                })
+            }
 
             if ('user_info' in actual){
                 //console.log("update!");
@@ -161,6 +228,9 @@ function AppCtrl($scope, ChatService) {
                     alert("alias taken: " +  actual['alias_result']['alias']);
                 }
             }
+
+            //some voodoo for a concise delete.
+            $scope.recent_messages = _.filter($scope.recent_messages, function(msg){ return !_.contains(actual.deleted, msg.post_id);});
 
             $scope.$apply();
       }
