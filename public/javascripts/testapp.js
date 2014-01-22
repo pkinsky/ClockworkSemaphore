@@ -78,6 +78,41 @@ function AppCtrl($scope, ChatService) {
   };
 
 
+  $scope.push_message = function(post_id, favorite, msg) {
+                msg['post_id'] = post_id;
+                msg['favorite'] = favorite;
+                $scope.messages.unshift(msg);
+
+                  if (!$scope.users.hasOwnProperty(msg.user_id)){
+                      console.log("request info for " + msg.user_id);
+                      ChatService.send( {user_id: msg.user_id} );
+                  }
+  }
+
+
+  $scope.delete_message = function(message) {
+    ChatService.send( {delete_message:message.post_id} );
+    //remove msg from map? yeah why not bad removal only reflected client side anyway.
+    //todo: wait on confirmation
+
+  }
+
+  $scope.favorite_message = function(message) {
+    console.log("favorite message: " + JSON.stringify(message))
+
+    var post_id = message.post_id;
+
+    if (message.favorite) {
+        message.favorite = false;
+        if (!$scope.$$phase) $scope.$apply();
+        ChatService.send( {unfavorite_message:message.post_id} );
+    }else{
+        message.favorite = true;
+        if (!$scope.$$phase) $scope.$apply();
+        ChatService.send( {favorite_message:message.post_id} );
+    }
+
+  }
 
 
   ChatService.subscribe(function(message) {
@@ -85,26 +120,29 @@ function AppCtrl($scope, ChatService) {
             var actual = jQuery.parseJSON(message)
 
             if ('msg' in actual){
-                var msg = actual['msg']
-                $scope.messages.unshift(msg);
+                var messages = actual['msg'];
+
+
+
+                messages.forEach(function(msg_info) {
+                    var post_id = msg_info.post_id;
+                    var favorite = msg_info.favorite;
+                    var msg = msg_info.msg;
+                    console.log("pushing message for info " + msg_info)
+                    $scope.push_message(post_id, favorite, msg);
+                });
+
+
 
                 $scope.messages.sort(function(a,b){
                   return a.timestamp < b.timestamp ? 1 : -1;
                 });
-
-
-                if (!$scope.users.hasOwnProperty(msg.user_id)){
-                    console.log("request info for " + msg.user_id);
-                    ChatService.send( {user_id: msg.user_id} );
-                }
-
             }
 
+
             if ('user_info' in actual){
-                console.log("update!");
-
+                //console.log("update!");
                 var user_info = actual['user_info'];
-
                 $scope.users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url};
             }
 

@@ -34,6 +34,10 @@ import scala.util.Success
 import play.api.libs.json.JsObject
 import actors.SocketClosed
 
+import ApplicativeStuff._
+import scalaz._
+
+
 class SocketActor extends Actor {
 
   val redisService: RedisService = RedisServiceImpl
@@ -64,16 +68,14 @@ class SocketActor extends Actor {
   }
 
 
-  def onRecentPosts(posts: Seq[Msg], user_id: IdentityId) = {
+  private def send(user_id: IdentityId)(update: Update): Unit = webSockets(user_id).channel push update.asJson
 
-    posts.reverse.foreach{ msg =>
-      webSockets(user_id).channel push Update(
-        msg = Some(msg)
-      ).asJson
-    }
 
-  }
 
+  def onRecentPosts(posts: List[MsgInfo], user_id: IdentityId) =
+      send(user_id)(Update(
+          msg = posts
+        ))
 
 
   override def receive = {
@@ -82,17 +84,11 @@ class SocketActor extends Actor {
         sender ! userChannel.enumerator
 
 
-
-
     case AckSocket(user_id) =>
       log.debug(s"ack socket $user_id")
 
-      val result = for {
-        posts <- redisService.recent_posts
-      } yield posts
-
-      result.onComplete{
-        case Success(messages) =>   onRecentPosts(messages, user_id)
+      redisService.recent_posts(user_id).onComplete{
+        case Success(messages) => onRecentPosts(messages, user_id)
         case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
 
@@ -124,13 +120,55 @@ class SocketActor extends Actor {
 
 
 
+      //when a user posts a message.
     case message@Msg(timestamp, user_id, msg) =>
-        redisService.post(message).onComplete{ _ =>
+        redisService.post(message).onComplete{
+          case Success(post_id) =>
                 webSockets(user_id).channel push Update(
-                  Some(message),
-                  None
+                  msg = MsgInfo(post_id, false, message) :: Nil
                 ).asJson
+          case Failure(t) => log.error("posting msg failed: " + t)
         }
+
+
+    case FavoriteMessage(userId, post_id) => {
+
+
+      redisService.add_favorite_post(userId, post_id)
+
+      //todo (?): ack
+
+    }
+
+    case UnFavoriteMessage(userId, post_id) => {
+
+      redisService.remove_favorite_post(userId, post_id)
+
+      //todo (?): ack
+
+    }
+
+
+    case DeleteMessage(userId, post_id) => {
+
+      //check that requester is author of post before deletion
+      for {
+        post <- redisService.load_post(post_id)
+        _ <- { if (post.user_id == userId)
+                    Future.failed(new Exception("can't delete another user's posts"))
+               else
+                    Applicative[Future].point{ () }
+             }
+        _ <- redisService.delete_post(post_id)
+      } yield ()
+
+      //get post
+      //if user_id same as post.user_id delete,
+      //else error
+      //need to send deleted_posts with update
+
+
+    }
 
 
 
@@ -173,6 +211,12 @@ case class RequestAlias(user_id: IdentityId, alias: String) extends SocketMessag
 
 case class RequestInfo(requester: IdentityId, user_id: IdentityId) extends SocketMessage
 
+case class DeleteMessage(userId: IdentityId, post_id: String)
+
+case class FavoriteMessage(userId: IdentityId, post_id: String)
+
+case class UnFavoriteMessage(userId: IdentityId, post_id: String)
+
 
 object Msg {
 
@@ -181,7 +225,7 @@ object Msg {
       JsObject(Seq(
         ("timestamp", JsNumber(msg.timestamp)),
         ("user_id", JsString(idToString(msg.user_id))),
-        ("msg", JsString(msg.body))
+        ("body", JsString(msg.body))
       ))
     }
 
@@ -189,12 +233,8 @@ object Msg {
       for{
         timeStamp <- Json.fromJson[Long](json \ "timestamp")
         identityId <- Json.fromJson[String](json \ "user_id").map(stringToId(_))
-        msg <- Json.fromJson[String](json \ "msg")
+        msg <- Json.fromJson[String](json \ "body")
       } yield Msg(timeStamp,identityId, msg)
-
-
-
-
 
   }
 
@@ -208,11 +248,19 @@ object PublicIdentity {
   implicit val format1 = Json.format[IdentityId]
   implicit val format2 = Json.format[PublicIdentity]}
 
+
+object MsgInfo{
+  implicit val format = Json.format[MsgInfo]
+}
+
 object Update {
   implicit val format = Json.format[Update]
 }
 
-//todo: add post id to Msg for absolute ordering
+
+case class MsgInfo(post_id: String, favorite: Boolean, msg: Msg)
+
+//todo: case class representing message + isFavorite and post_id for sending to client
 case class Msg(timestamp: Long, user_id: IdentityId, body: String) extends JsonMessage with SocketMessage{
   def asJson = Json.toJson(this)
 }
@@ -223,7 +271,7 @@ case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
 
 case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String])
 
-case class Update(msg: Option[Msg]=None,
+case class Update(msg: List[MsgInfo]=Nil,
 				  alias_result: Option[AckRequestAlias]=None,
 				  user_info: Option[PublicIdentity]=None) extends JsonMessage {
 

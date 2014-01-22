@@ -25,6 +25,8 @@ import securesocial.core.SecureSocial
 import akka.event.slf4j.Logger
 import service._
 
+import IdentityIdConverters._
+
 
 object AppController extends Controller with SecureSocial {
   lazy val log = Logger("application." + this.getClass.getName)
@@ -40,7 +42,7 @@ object AppController extends Controller with SecureSocial {
 
       val user =  Await.result(RedisServiceImpl.get_public_user(user_id), 1 second) //ugh
 
-      Ok(views.html.app.index(RedisServiceImpl.idToString(user_id), user.alias, user.avatar_url.getOrElse("")))
+      Ok(views.html.app.index(user_id.asString, user.alias, user.avatar_url.getOrElse("")))
     }
   }
 
@@ -62,23 +64,29 @@ object AppController extends Controller with SecureSocial {
 
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
-                    val current_time = System.currentTimeMillis
-                    socketActor ! Msg(current_time, userId, msg)
+                    socketActor ! Msg(System.currentTimeMillis, userId, msg)
 
                 case JsString("ACK") => socketActor ! AckSocket(userId)
 
-
                 case JsObject(Seq(("user_id", JsString(id)))) =>
-                  socketActor ! RequestInfo(userId, RedisServiceImpl.stringToId(id))
-
+                    socketActor ! RequestInfo(userId, id.asId)
 
                 case JsObject(Seq(("alias", JsString(alias)))) =>
                     socketActor ! RequestAlias(userId, alias)
 
+                case JsObject(Seq(("delete_message", JsString(post_id)))) =>
+                  socketActor ! DeleteMessage(userId, post_id)
+
+                case JsObject(Seq(("favorite_message", JsString(post_id)))) =>
+                  socketActor ! FavoriteMessage(userId, post_id)
+
+                case JsObject(Seq(("unfavorite_message", JsString(post_id)))) =>
+                  socketActor ! UnFavoriteMessage(userId, post_id)
+
                 case js => log.error(s"  ???: received jsvalue $js")
-              }.mapDone {
+          }.mapDone {
                 _ => socketActor ! SocketClosed(userId)
-              }
+          }
 
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
           }

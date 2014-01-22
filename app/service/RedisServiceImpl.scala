@@ -105,20 +105,7 @@ object RedisServiceImpl extends RedisService{
 
 
     }
-
-
   }
-
-
-
-  def idToString(id: IdentityId): String = s"${id.providerId}:${id.userId}"
-
-  def stringToId(id: String): IdentityId = id.split(":") match {
-    case Array(user_id, provider_id) => IdentityId(provider_id, user_id)
-    case _ => throw new IllegalArgumentException(s"could not parse user id $id")
-  }
-
-
 
 
   private val global_timeline = "global:timeline"  //list
@@ -126,8 +113,9 @@ object RedisServiceImpl extends RedisService{
 
   
   private def post_info(post_id: String) = s"post:$post_id:info"
-  
-  
+
+
+  private def user_favorites(user_id: IdentityId) = s"user:${idToString(user_id)}:favorites"
 
   private def user_alias(user_id: IdentityId) = s"user:${idToString(user_id)}:alias"
 
@@ -181,8 +169,18 @@ object RedisServiceImpl extends RedisService{
     }
   }
 
+  def load_favorite_posts(user_id: IdentityId): Future[Set[String]] = {
+    redis.sMembers[String](user_favorites(user_id))
+  }
+
+  def remove_favorite_post(user_id: IdentityId, post_id: String): Future[Unit] = {
+    redis.sRem(user_favorites(user_id), post_id).map( _ => () ) //return Unit?
+  }
 
 
+  def add_favorite_post(user_id: IdentityId, post_id: String): Future[Unit] = {
+    redis.sAdd(user_favorites(user_id), post_id).map( _ => () ) //return Unit?
+  }
 
   def save_user(user: Identity): Future[Unit] = {
     val user_json = Json.toJson[Identity](user).toString
@@ -209,15 +207,17 @@ object RedisServiceImpl extends RedisService{
   private def next_post_id: Future[String] = redis.incr("global:nextPostId").map(_.toString)
 
 
-
-  //fuck this method, srsly
-  def recent_posts: Future[Seq[Msg]] =
+  def recent_posts(user_id: IdentityId): Future[List[MsgInfo]] =
     for {
       timeline <- redis.lRange[String](global_timeline, 0, 50)
-      posts <-  Future.sequence(timeline.map{post_id =>
-        load_post(post_id)
-      })
-    } yield posts
+
+      favorites <- redis.sMembers(user_favorites(user_id))
+
+      posts_f: Seq[Future[MsgInfo]] = timeline.map{post_id =>
+        load_post(post_id).map{ MsgInfo(post_id, favorites.contains(post_id), _) }
+      }
+      posts <-  Future.sequence(posts_f)
+    } yield posts.toList
 
 
 
@@ -238,7 +238,11 @@ object RedisServiceImpl extends RedisService{
       result.get //fuckit
     }
 
-  
+
+  def delete_post(post_id: String): Future[Unit] = {
+     redis.del(post_info(post_id)).map( _ => () )
+  }
+
 
   def save_post(post_id: String, msg: Msg): Future[Unit] =
     redis.hmSetFromMap(post_info(post_id), Map(
