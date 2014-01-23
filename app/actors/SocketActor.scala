@@ -48,7 +48,7 @@ class SocketActor extends Actor {
 
 
   def establishConnection(user_id: IdentityId): UserChannel = {
-    log.debug(s"establish socket connection for user $user_id")
+    //log.debug(s"establish socket connection for user $user_id")
 
     val userChannel: UserChannel =  webSockets.get(user_id) getOrElse {
         val broadcast: (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
@@ -63,14 +63,8 @@ class SocketActor extends Actor {
   }
 
 
-  private def send(user_id: IdentityId)(update: Update): Unit = webSockets(user_id).channel push update.asJson
-
-
-
-  def onRecentPosts(posts: List[MsgInfo], user_id: IdentityId) =
-      send(user_id)(Update(
-          msg = posts
-        ))
+  private def send(user_id: IdentityId)(update: Update): Unit =
+    webSockets(user_id).channel push update.asJson
 
 
   override def receive = {
@@ -79,22 +73,31 @@ class SocketActor extends Actor {
         sender ! userChannel.enumerator
 
 
-    case AckSocket(user_id) =>
-      log.debug(s"ack socket $user_id")
-
-      redisService.recent_posts(user_id).onComplete{
-        case Success(messages) => onRecentPosts(messages, user_id)
-        case Failure(t) => log.error(s"recent posts fail: ${t.getStackTraceString}");
+    case RecentPosts(user_id) =>
+      redisService.followed_posts(user_id).onComplete{
+        case Success(messages) =>
+            send(user_id)(Update(
+              msg = messages
+            ))
+        case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
 
 
+    case FollowedPosts(user_id) =>
+      redisService.followed_posts(user_id).onComplete{
+        case Success(messages) =>
+            send(user_id)(Update(
+              msg = messages
+            ))
+        case Failure(t) => log.error(s"recent posts fail: ${t}");
+      }
 
     case RequestAlias(user_id, alias) =>
-        log.info(s"user $user_id requesting alias $alias")
+        //log.info(s"user $user_id requesting alias $alias")
         val trimmed = alias.trim
 
         if (trimmed.contains(" ")){ //seperate validation somehow
-          log.info(s"bad user id: $user_id")
+          log.error(s"bad user id: $user_id")
         } else {
 
           val alias_f = redisService.establish_alias(user_id, trimmed)
@@ -117,7 +120,7 @@ class SocketActor extends Actor {
 
       //when a user posts a message.
     case message@Msg(timestamp, user_id, msg) =>
-        redisService.post(message).onComplete{
+        redisService.post(user_id, message).onComplete{
           case Success(post_id) =>
                 webSockets(user_id).channel push Update(
                   msg = MsgInfo(post_id, false, message) :: Nil
@@ -126,37 +129,57 @@ class SocketActor extends Actor {
         }
 
 
-    case FavoriteMessage(userId, post_id) => {
-
-
-      redisService.add_favorite_post(userId, post_id)
-
-      //todo (?): ack
-
+    case FavoriteMessage(user_id, post_id) => {
+      log.info(s"$user_id favorite $post_id")
+      redisService.add_favorite_post(user_id, post_id)
     }
 
-    case UnFavoriteMessage(userId, post_id) => {
-
-      redisService.remove_favorite_post(userId, post_id)
-
-      //todo (?): ack
-
+    case UnFavoriteMessage(user_id, post_id) => {
+      log.info(s"$user_id unfavorite $post_id")
+      redisService.remove_favorite_post(user_id, post_id)
     }
+
+
+    case FollowUser(user_id, following) => {
+      log.info(s"$user_id follow $following")
+      redisService.add_follower(user_id, following)
+    }
+
+    case UnfollowUser(user_id, following) => {
+      log.info(s"$user_id unfollow $following")
+      redisService.delete_follower(user_id, following)
+    }
+
+
 
 
     case DeleteMessage(userId, post_id) => {
+      log.info(s"delete message $post_id")
 
-      //check that requester is author of post before deletion
-      for {
+      //todo: secure
+      redisService.delete_post(post_id).onComplete{
+        case Success(_) => send(userId)( Update(deleted = Set(post_id)))
+        case Failure(t) => log.error(s"failed to delete post due to $t")
+      }
+
+      /*check that requester is author of post before deletion
+      val r = for {
         post <- redisService.load_post(post_id)
-        _ <- { if (post.user_id == userId)
+
+      //ACK by sending a deleted message. use deleted: Set[String]
+
+      TO FUCKING DO
+
+        _ <- { if (post.user_id != userId){
+                    //log.info(s" post.userid ${post.user_id} != userId $userId")
                     Future.failed(new Exception("can't delete another user's posts"))
-               else
+             }else
                     Applicative[Future].point{ () }
              }
-        _ <- redisService.delete_post(post_id)
-      } yield ()
 
+        _ <-
+      } yield ()
+      */
       //get post
       //if user_id same as post.user_id delete,
       //else error
@@ -166,13 +189,13 @@ class SocketActor extends Actor {
     }
 
     case SocketClosed(user_id) =>
-      log debug s"closed socket for $user_id"
+      //log debug s"closed socket for $user_id"
       val userChannel = webSockets(user_id)
 
       if (userChannel.channelsCount > 1) {
         userChannel.channelsCount = userChannel.channelsCount - 1
         webSockets += (user_id -> userChannel)
-        log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
+        //log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
       } else {
         removeUserChannel(user_id)
       }
@@ -180,7 +203,7 @@ class SocketActor extends Actor {
   }
 
   def removeUserChannel(user_id: IdentityId) = {
-    log debug s"removed channel for $user_id"
+    //log debug s"removed channel for $user_id"
     webSockets -= user_id
   }
 }

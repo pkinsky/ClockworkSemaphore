@@ -64,11 +64,12 @@ case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
   def asJson = Json.toJson(this)
 }
 
-case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String])
+case class PublicIdentity(user_id: String, alias: String, following: Set[String], avatar_url: Option[String])
 
 case class Update(msg: List[MsgInfo]=Nil,
                   alias_result: Option[AckRequestAlias]=None,
-                  user_info: Option[PublicIdentity]=None) extends JsonMessage {
+                  user_info: Option[PublicIdentity]=None,
+                  deleted: Set[String] = Set.empty) extends JsonMessage {
 
   def asJson = Json.toJson(this)
 }
@@ -80,7 +81,9 @@ case class Update(msg: List[MsgInfo]=Nil,
 
 sealed trait SocketMessage
 
-case class AckSocket(user_id: IdentityId)
+case class FollowedPosts(user_id: IdentityId)
+
+case class RecentPosts(user_id: IdentityId)
 
 case object Register extends SocketMessage
 
@@ -97,3 +100,7 @@ case class DeleteMessage(userId: IdentityId, post_id: String)
 case class FavoriteMessage(userId: IdentityId, post_id: String)
 
 case class UnFavoriteMessage(userId: IdentityId, post_id: String)
+
+case class FollowUser(userId: IdentityId, following: IdentityId)
+
+case class UnfollowUser(userId: IdentityId, following: IdentityId)

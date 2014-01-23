@@ -64,15 +64,19 @@ object AppController extends Controller with SecureSocial {
 
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
-                    socketActor ! Msg(System.currentTimeMillis, userId, msg)
+                  socketActor ! Msg(System.currentTimeMillis, userId, msg)
 
-                case JsString("ACK") => socketActor ! AckSocket(userId)
+                case JsString("recent_posts") =>
+                  socketActor ! RecentPosts(userId)
+
+                case JsString("followed_posts") =>
+                  socketActor ! FollowedPosts(userId)
 
                 case JsObject(Seq(("user_id", JsString(id)))) =>
-                    socketActor ! RequestInfo(userId, id.asId)
+                  socketActor ! RequestInfo(userId, id.asId)
 
                 case JsObject(Seq(("alias", JsString(alias)))) =>
-                    socketActor ! RequestAlias(userId, alias)
+                  socketActor ! RequestAlias(userId, alias)
 
                 case JsObject(Seq(("delete_message", JsString(post_id)))) =>
                   socketActor ! DeleteMessage(userId, post_id)
@@ -80,10 +84,18 @@ object AppController extends Controller with SecureSocial {
                 case JsObject(Seq(("favorite_message", JsString(post_id)))) =>
                   socketActor ! FavoriteMessage(userId, post_id)
 
+                case JsObject(Seq(("follow", JsString(user_id)))) =>
+                  socketActor ! FollowUser(userId, user_id.asId)
+
+                case JsObject(Seq(("unfollow", JsString(user_id)))) =>
+                  socketActor ! UnfollowUser(userId, user_id.asId)
+
                 case JsObject(Seq(("unfavorite_message", JsString(post_id)))) =>
                   socketActor ! UnFavoriteMessage(userId, post_id)
 
-                case js => log.error(s"  ???: received jsvalue $js")
+                case js =>
+                  log.error(s"  ???: received jsvalue $js")
+
           }.mapDone {
                 _ => socketActor ! SocketClosed(userId)
           }

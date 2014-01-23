@@ -2,7 +2,7 @@
 
 @layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl"
-     ng-init="init( '@user_id', {'@user_id':  {'alias': '@user_alias', 'avatar_url': '@user_avatar_url'}} )">
+     ng-init="init( '@user_id', {'@user_id':  {'alias': '@user_alias', 'avatar_url': '@user_avatar_url', 'following':false}} )">
 
 
 
@@ -18,14 +18,13 @@
             <a class="navbar-brand" href="#">Hello {{ get_user(current_user).alias }}</a>
         </div>
 
-        <!-- Collect the nav links, forms, and other content for toggling
+        <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
             <ul class="nav navbar-nav">
-                <li class="active"><a href="#">Home</a></li>
-                <li><a href="#">???</a></li>
-                <li><a href="#">???</a></li>
+                <li><a ng-click="recent_posts()">Recent Posts</a></li>
+                <li><a ng-click="followed_posts()">Followed Posts</a></li>
             </ul>
-        </div> /.navbar-collapse -->
+        </div>
     </nav>
 
 
@@ -33,7 +32,6 @@
 
 
 <div class="row">
-
 
     <div class="col-md-8 col-xs-8">
     <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
@@ -48,8 +46,7 @@
 
     <br>
 
-
-    <div class="panel panel-tweet" ng-repeat="message in messages">
+    <div class="panel panel-tweet" ng-repeat="message in get_messages()">
         <div class="panel-heading">
             <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded">
             {{ get_user(message.user_id).alias }}
