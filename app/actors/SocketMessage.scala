@@ -64,12 +64,15 @@ case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
   def asJson = Json.toJson(this)
 }
 
-case class PublicIdentity(user_id: String, alias: String, following: Set[String], avatar_url: Option[String])
+//user specific, following: is the current user following this dude?
+case class PublicIdentity(user_id: String, alias: String, following: Boolean, avatar_url: Option[String])
 
 case class Update(msg: List[MsgInfo]=Nil,
                   alias_result: Option[AckRequestAlias]=None,
                   user_info: Option[PublicIdentity]=None,
-                  deleted: Set[String] = Set.empty) extends JsonMessage {
+                  deleted: Set[String] = Set.empty,
+                  recent_messages: List[String]=Nil,
+                  followed_messages: List[String]=Nil) extends JsonMessage {
 
   def asJson = Json.toJson(this)
 }

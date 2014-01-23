@@ -8,9 +8,9 @@ trait RedisService {
 
   def get_followers(user_id: IdentityId): Future[Set[String]]
 
-  def delete_follower(user_id: IdentityId, following: IdentityId): Future[Unit]
+  def delete_follower(follower: IdentityId, following: IdentityId): Future[Unit]
 
-  def add_follower(user_id: IdentityId, following: IdentityId): Future[Unit]
+  def add_follower(follower: IdentityId, following: IdentityId): Future[Unit]
 
   def save_user(user: Identity): Future[Unit]
 
@@ -18,7 +18,7 @@ trait RedisService {
 
   def get_user(user_id: IdentityId): Future[Identity]
 
-  def get_public_user(user_id: IdentityId): Future[PublicIdentity]
+  def get_public_user(current_user: IdentityId, user_id: IdentityId): Future[PublicIdentity]
 
   def post(user_id: IdentityId, msg: Msg): Future[String]
 

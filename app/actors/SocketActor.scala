@@ -74,20 +74,24 @@ class SocketActor extends Actor {
 
 
     case RecentPosts(user_id) =>
-      redisService.followed_posts(user_id).onComplete{
+      redisService.recent_posts(user_id).onComplete{
         case Success(messages) =>
             send(user_id)(Update(
-              msg = messages
+              msg = messages,
+              recent_messages = messages.map( msgInfo => msgInfo.post_id )
             ))
         case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
 
 
     case FollowedPosts(user_id) =>
+      log.info("followed messages hit")
       redisService.followed_posts(user_id).onComplete{
         case Success(messages) =>
+          log.info(s"followed messages pass: $messages")
             send(user_id)(Update(
-              msg = messages
+              msg = messages,
+              followed_messages = messages.map( msgInfo => msgInfo.post_id )
             ))
         case Failure(t) => log.error(s"recent posts fail: ${t}");
       }
@@ -111,7 +115,7 @@ class SocketActor extends Actor {
 
 
     case RequestInfo(requester, user_id) =>
-      redisService.get_public_user(user_id).onComplete{
+      redisService.get_public_user(requester, user_id).onComplete{
           case Success(user_info) => webSockets(requester).channel push Update(user_info = Some(user_info)).asJson
           case Failure(t) => log.error(s"error: ${t}");
         }
@@ -120,10 +124,13 @@ class SocketActor extends Actor {
 
       //when a user posts a message.
     case message@Msg(timestamp, user_id, msg) =>
+        log.info(s"recieving msg: $message" )
+
         redisService.post(user_id, message).onComplete{
           case Success(post_id) =>
                 webSockets(user_id).channel push Update(
-                  msg = MsgInfo(post_id, false, message) :: Nil
+                  msg = MsgInfo(post_id, false, message) :: Nil,
+                  recent_messages = post_id :: Nil
                 ).asJson
           case Failure(t) => log.error("posting msg failed: " + t)
         }

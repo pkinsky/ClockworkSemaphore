@@ -40,7 +40,7 @@ object AppController extends Controller with SecureSocial {
 
       val user_id = SecureSocial.currentUser.get.identityId
 
-      val user =  Await.result(RedisServiceImpl.get_public_user(user_id), 1 second) //ugh
+      val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
 
       Ok(views.html.app.index(user_id.asString, user.alias, user.avatar_url.getOrElse("")))
     }
@@ -67,6 +67,7 @@ object AppController extends Controller with SecureSocial {
                   socketActor ! Msg(System.currentTimeMillis, userId, msg)
 
                 case JsString("recent_posts") =>
+                  log.info(">>>>>>>>>>>>>>>>>>>recent posts motherfuckers")
                   socketActor ! RecentPosts(userId)
 
                 case JsString("followed_posts") =>
