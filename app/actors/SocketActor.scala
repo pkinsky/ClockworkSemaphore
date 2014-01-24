@@ -121,20 +121,21 @@ class SocketActor extends Actor {
         }
 
 
+    case MakePost(from, message) => {
+      log.info(s"$from pushing msg: $message" )
+      redisService.post(from, message).onComplete{
+        case Success(post_id) => self ! PushPost(from, MsgInfo(post_id, false, message))
+        case Failure(t) => log.error("posting msg failed: " + t)
+      }
+    }
 
-      //when a user posts a message.
-    case message@Msg(timestamp, user_id, msg) =>
-        log.info(s"recieving msg: $message" )
-
-        redisService.post(user_id, message).onComplete{
-          case Success(post_id) =>
-                webSockets(user_id).channel push Update(
-                  msg = MsgInfo(post_id, false, message) :: Nil,
-                  recent_messages = post_id :: Nil
-                ).asJson
-          case Failure(t) => log.error("posting msg failed: " + t)
-        }
-
+    case PushPost(to, msg_info) => {
+      log.info(s"pushing msg info: $msg_info to $to" )
+      webSockets(to).channel push Update(
+        msg = msg_info :: Nil,
+        recent_messages = msg_info.post_id :: Nil
+      ).asJson
+    }
 
     case FavoriteMessage(user_id, post_id) => {
       log.info(s"$user_id favorite $post_id")

@@ -84,6 +84,11 @@ case class Update(msg: List[MsgInfo]=Nil,
 
 sealed trait SocketMessage
 
+
+case class MakePost(from: IdentityId, msg: Msg)
+
+case class PushPost(to: IdentityId, msg: MsgInfo)
+
 case class FollowedPosts(user_id: IdentityId)
 
 case class RecentPosts(user_id: IdentityId)

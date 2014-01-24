@@ -37,7 +37,6 @@ object AppController extends Controller with SecureSocial {
 
   def index = SecuredAction  {
     implicit request => {
-
       val user_id = SecureSocial.currentUser.get.identityId
 
       val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
@@ -64,7 +63,7 @@ object AppController extends Controller with SecureSocial {
 
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
-                  socketActor ! Msg(System.currentTimeMillis, userId, msg)
+                  socketActor ! MakePost(userId, Msg(System.currentTimeMillis, userId, msg))
 
                 case JsString("recent_posts") =>
                   log.info(">>>>>>>>>>>>>>>>>>>recent posts motherfuckers")
