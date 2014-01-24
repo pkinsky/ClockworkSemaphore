@@ -5,21 +5,17 @@ import play.Project._
 object ApplicationBuild extends Build {
   val appName = "ClockworkSemaphore"
   val appVersion = "1.0"
-  
 
   val securesocial = "securesocial" %% "securesocial" % "2.1.2" //
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.0.5" //functional programming voodoo
   val scalaz_concurrent = "org.scalaz" %% "scalaz-concurrent" % "7.0.5" //functional programming voodoo
-
   val scredis = "com.livestream" %% "scredis" % "1.0.1" //redis wrapper
-  
+
 
   val appDependencies = Seq(
     jdbc,
     cache,
-    //"org.specs2" %% "specs2" % "1.14" % "test",
     "commons-codec" % "commons-codec" % "1.7",
-    //"com.typesafe.akka" %% "akka-testkit" % "2.1.0",
     scredis,
     scalaz,
 	  securesocial

@@ -37,7 +37,7 @@ app.factory('ChatService', function() {
     };
 
     ws.onerror = function() {
-      alert("error, failed to open connection");
+      console.error("error, failed to open connection");
     }
 
     ws.onmessage = function(message) {
