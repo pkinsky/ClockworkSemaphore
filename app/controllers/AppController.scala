@@ -66,11 +66,7 @@ object AppController extends Controller with SecureSocial {
                   socketActor ! MakePost(userId, Msg(System.currentTimeMillis, userId, msg))
 
                 case JsString("recent_posts") =>
-                  log.info(">>>>>>>>>>>>>>>>>>>recent posts motherfuckers")
                   socketActor ! RecentPosts(userId)
-
-                case JsString("followed_posts") =>
-                  socketActor ! FollowedPosts(userId)
 
                 case JsObject(Seq(("user_id", JsString(id)))) =>
                   socketActor ! RequestInfo(userId, id.asId)
@@ -83,12 +79,6 @@ object AppController extends Controller with SecureSocial {
 
                 case JsObject(Seq(("favorite_message", JsString(post_id)))) =>
                   socketActor ! FavoriteMessage(userId, post_id)
-
-                case JsObject(Seq(("follow", JsString(user_id)))) =>
-                  socketActor ! FollowUser(userId, user_id.asId)
-
-                case JsObject(Seq(("unfollow", JsString(user_id)))) =>
-                  socketActor ! UnfollowUser(userId, user_id.asId)
 
                 case JsObject(Seq(("unfavorite_message", JsString(post_id)))) =>
                   socketActor ! UnFavoriteMessage(userId, post_id)

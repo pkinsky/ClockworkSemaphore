@@ -6,12 +6,6 @@ import scala.concurrent.Future
 
 trait RedisService {
 
-  def get_followers(user_id: IdentityId): Future[Set[String]]
-
-  def delete_follower(follower: IdentityId, following: IdentityId): Future[Unit]
-
-  def add_follower(follower: IdentityId, following: IdentityId): Future[Unit]
-
   def save_user(user: Identity): Future[Unit]
 
   def delete_post(post_id: String): Future[Unit]
@@ -26,8 +20,6 @@ trait RedisService {
 
   def recent_posts(user_id: IdentityId): Future[List[MsgInfo]]
 
-  def followed_posts(user_id: IdentityId): Future[List[MsgInfo]]
-
   def add_favorite_post(user_id: IdentityId, post_id: String): Future[Unit]
 
   def remove_favorite_post(user_id: IdentityId, post_id: String): Future[Unit]
@@ -35,4 +27,5 @@ trait RedisService {
   def load_favorite_posts(user_id: IdentityId): Future[Set[String]]
 
   def establish_alias(user_id: IdentityId, alias: String): Future[Boolean]
+
 }

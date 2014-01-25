@@ -65,7 +65,7 @@ case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
 }
 
 //user specific, following: is the current user following this dude?
-case class PublicIdentity(user_id: String, alias: String, following: Boolean, avatar_url: Option[String])
+case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String])
 
 case class Update(msg: List[MsgInfo]=Nil,
                   alias_result: Option[AckRequestAlias]=None,
@@ -89,8 +89,6 @@ case class MakePost(from: IdentityId, msg: Msg)
 
 case class PushPost(to: IdentityId, msg: MsgInfo)
 
-case class FollowedPosts(user_id: IdentityId)
-
 case class RecentPosts(user_id: IdentityId)
 
 case object Register extends SocketMessage
@@ -108,7 +106,3 @@ case class DeleteMessage(userId: IdentityId, post_id: String)
 case class FavoriteMessage(userId: IdentityId, post_id: String)
 
 case class UnFavoriteMessage(userId: IdentityId, post_id: String)
-
-case class FollowUser(userId: IdentityId, following: IdentityId)
-
-case class UnfollowUser(userId: IdentityId, following: IdentityId)

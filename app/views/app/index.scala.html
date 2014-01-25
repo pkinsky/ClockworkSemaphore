@@ -45,15 +45,12 @@
         <span class="offset1 span2 label pull-right">
         <br>
         <a ng-click="delete_message(message)" ng-if="message.user_id==current_user">
-            <i class="fa fa-trash-o fa-6"  title="delete post"></i></a>
+            <i class="fa fa-trash-o fa-6"  title="delete post"></i>
+        </a>
+
         <a ng-click="favorite_message(message)" ng-if="message.user_id!=current_user">
             <i class="fa fa-star-o fa-6" ng-if="!message.favorite"  title="favorite message"></i>
             <i class="fa fa-star fa-6" ng-if="message.favorite" title="unfavorite message"></i>
-        </a>
-        &nbsp
-        <a ng-click="follow_user(message.user_id)" ng-if="message.user_id!=current_user">
-            <i class="fa fa-eye fa-6" ng-if="!following(message.user_id)" title="follow"></i>
-            <i class="fa fa-eye-slash fa-6" ng-if="following(message.user_id)"  title="unfollow"></i>
         </a>
 
 

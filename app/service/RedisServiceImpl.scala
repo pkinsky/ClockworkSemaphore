@@ -118,7 +118,6 @@ object RedisServiceImpl extends RedisService{
 
   private def user_alias(user_id: IdentityId) = s"user:${idToString(user_id)}:alias"
 
-  private def user_followers(user_id: IdentityId) =  s"user:${idToString(user_id)}:followers" //uids of followers
 
 
 
@@ -161,11 +160,10 @@ object RedisServiceImpl extends RedisService{
   def get_public_user(current_user: IdentityId, user_id: IdentityId): Future[PublicIdentity] = {
     for {
       id <- get_user(user_id)
-      following <- get_followers(current_user)
       alias <- get_alias(user_id)
     } yield {
         //log.info(s"get_public_user for $user_id results: $id, $alias")
-        PublicIdentity(idToString(id.identityId), alias.getOrElse(""), following.contains(user_id.asString), id.avatarUrl)
+        PublicIdentity(idToString(id.identityId), alias.getOrElse(""), id.avatarUrl)
     }
   }
 
@@ -206,21 +204,6 @@ object RedisServiceImpl extends RedisService{
 
   private def next_post_id: Future[String] = redis.incr("global:nextPostId").map(_.toString)
 
-  def followed_posts(user_id: IdentityId): Future[List[MsgInfo]] =
-    for {
-      my_posts <- redis.lRange[String](user_posts(user_id), 50)
-
-      _ = log.info(s"lRange from ${user_posts(user_id)} = $my_posts");
-
-      favorites <- redis.sMembers(user_favorites(user_id))
-
-      posts_f: Seq[Future[Option[MsgInfo]]] = my_posts.map{post_id =>
-        load_post(post_id).map(r => r.map{ MsgInfo(post_id, favorites.contains(post_id), _) })
-      }
-
-      posts <-  Future.sequence(posts_f)
-    } yield posts.collect{ case Some(msg) => msg }.toList //skip deleted messages
-
 
 
   def recent_posts(user_id: IdentityId): Future[List[MsgInfo]] =
@@ -236,22 +219,6 @@ object RedisServiceImpl extends RedisService{
       posts <-  Future.sequence(posts_f)
     } yield posts.collect{ case Some(msg) => msg }.toList //skip deleted messages
 
-  def delete_follower(follower: IdentityId, following: IdentityId): Future[Unit] = {
-    redis.sRem(user_followers(following), follower.asString).map( _ => () )
-  }
-
-  def add_follower(follower: IdentityId, following: IdentityId): Future[Unit] = {
-    redis.sAdd(user_followers(following), follower.asString).map( _ => () )
-  }
-
-  def get_followers(user_id: IdentityId): Future[Set[String]] = {
-
-    redis.sMembers[String](user_followers(user_id)).map{ r =>
-      log.info(s"followers of $user_id = $r")
-      r
-    }
-
-  }
 
   def load_post(post_id: String): Future[Option[Msg]] =
     for {
@@ -287,23 +254,16 @@ object RedisServiceImpl extends RedisService{
 
     def trim_global = redis.lTrim(global_timeline,0,1000)
 
-    def handle_post(post_id: String, audience: Set[String]) = {
-
-      log.info(s"handle post with audience $audience")
-
+    def handle_post(post_id: String) =
       (redis.lPush(global_timeline,post_id)
         |@| save_post(post_id, msg)
-        |@| Future.sequence(
-          audience.map{u => user_posts(u.asId)}.map{ u => log.info(s"push $post_id to $u"); redis.lPush(u, post_id) }
-        )
+        |@| redis.lPush(user_posts(user_id), post_id)
         ){ (a,b,c) => log.info("done handling post!"); () }
-
-    }
 
 
     for {
-      (post_id, followers) <- (next_post_id |@| get_followers(msg.user_id))((a,b) => (a,b))
-      _ <- handle_post(post_id, followers)
+      post_id <- next_post_id
+      _ <- handle_post(post_id)
       _ <- trim_global
     } yield post_id
   }

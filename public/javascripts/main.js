@@ -33,7 +33,6 @@ app.factory('ChatService', function() {
     ws.onopen = function() {
         console.log("ack websocket");
         service.ws.send(JSON.stringify("recent_posts"));
-        service.ws.send(JSON.stringify("followed_posts"));
     };
 
     ws.onerror = function() {
@@ -114,7 +113,6 @@ function AppCtrl($scope, ChatService) {
   };
 
   //array of post-id's
-  $scope.followed_messages = [];
   $scope.recent_messages = [];
 
   /*
@@ -163,30 +161,6 @@ function AppCtrl($scope, ChatService) {
   }
 
 
-  $scope.following = function(user_id) {
-    if (user_id in users){
-        return users[user_id].following;
-    }else{
-        return false;
-    }
-  }
-
-
-  $scope.follow_user = function(user_id) {
-    console.log("follow" + user_id);
-
-    if (users[user_id].following) {
-        users[user_id].following = false;
-        ChatService.send( {unfollow:user_id} );
-    }else{
-        users[user_id].following = true;
-        ChatService.send( {follow:user_id} );
-    }
-
-  }
-
-
-
   $scope.favorite_message = function(message) {
     console.log("favorite message: " + JSON.stringify(message))
 
@@ -228,18 +202,12 @@ function AppCtrl($scope, ChatService) {
                 })
             }
 
-            if ('followed_messages' in actual){
-                var recent = actual['followed_messages'];
-                recent.forEach(function(post_id){
-                    $scope.followed_messages.unshift(post_id);
-                })
-            }
 
             if ('user_info' in actual){
                 //console.log("update!");
                 var user_info = actual['user_info'];
                 fetching_users = _.without(fetching_users, user_info.user_id);
-                users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url, 'following':user_info.following};
+                users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url};
             }
 
             if ('alias_result' in actual){
@@ -252,7 +220,6 @@ function AppCtrl($scope, ChatService) {
 
             //some voodoo for a concise delete.
             $scope.recent_messages = _.filter($scope.recent_messages, function(post_id){ return !_.contains(actual.deleted, post_id);});
-            $scope.followed_messages = _.filter($scope.followed_messages, function(post_id){ return !_.contains(actual.deleted, post_id);});
 
             $scope.$apply();
       }

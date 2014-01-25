@@ -84,17 +84,6 @@ class SocketActor extends Actor {
       }
 
 
-    case FollowedPosts(user_id) =>
-      log.info("followed messages hit")
-      redisService.followed_posts(user_id).onComplete{
-        case Success(messages) =>
-          log.info(s"followed messages pass: $messages")
-            send(user_id)(Update(
-              msg = messages,
-              followed_messages = messages.map( msgInfo => msgInfo.post_id )
-            ))
-        case Failure(t) => log.error(s"recent posts fail: ${t}");
-      }
 
     case RequestAlias(user_id, alias) =>
         //log.info(s"user $user_id requesting alias $alias")
@@ -146,19 +135,6 @@ class SocketActor extends Actor {
       log.info(s"$user_id unfavorite $post_id")
       redisService.remove_favorite_post(user_id, post_id)
     }
-
-
-    case FollowUser(user_id, following) => {
-      log.info(s"$user_id follow $following")
-      redisService.add_follower(user_id, following)
-    }
-
-    case UnfollowUser(user_id, following) => {
-      log.info(s"$user_id unfollow $following")
-      redisService.delete_follower(user_id, following)
-    }
-
-
 
 
     case DeleteMessage(userId, post_id) => {
