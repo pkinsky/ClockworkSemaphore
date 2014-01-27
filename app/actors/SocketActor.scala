@@ -126,6 +126,16 @@ class SocketActor extends Actor {
       ).asJson
     }
 
+    case RequestPost(to, post_id) => {
+      log.info(s"load msg info for post_id:$post_id")
+      redisService.load_msg_info(to, post_id).onComplete{
+        case Success(Some(msg)) => self ! PushPost(to, msg)
+        case Success(None) => log.error(s"msg not found")
+        case Failure(t) => log.error(s"msg not found due to error $t")
+      }
+    }
+
+
     case FavoriteMessage(user_id, post_id) => {
       log.info(s"$user_id favorite $post_id")
       redisService.add_favorite_post(user_id, post_id)

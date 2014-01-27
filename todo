@@ -1,0 +1,7 @@
+1. 140 character limit for posts. client side and server side
+2. 32 character limit for names.
+3. user info in side panel
+    - first, need to allow users to set info:
+        make info panel editable if current user is focused on. show username and/or avatar in navbar to provide link if no posts on screen by current user
+    - about me
+    - website

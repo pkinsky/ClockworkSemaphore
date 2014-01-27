@@ -35,18 +35,34 @@ import actors.ApplicativeStuff._
 
 object RedisServiceImpl extends RedisService with UserOps with RedisSchema with RedisConfig {
 
-  def recent_posts(user_id: IdentityId): Future[List[MsgInfo]] =
+  private def zipMsgInfo(post_ids: List[String], user_id: IdentityId): Future[List[MsgInfo]] =
     for {
-      timeline <- redis.lRange[String](global_timeline, 0, 50)
       favorites <- redis.sMembers(user_favorites(user_id))
-      posts <-  Future.sequence(timeline.map{post_id =>
+      posts <-  Future.sequence(post_ids.map{post_id =>
         load_post(post_id).map(r =>
           r.map{
             MsgInfo(post_id, favorites.contains(post_id), _)
           })
       })
-    } yield posts.collect{ case Some(msg) => msg }.toList //drop deleted messages
+    } yield posts.collect{ case Some(msg) => msg }.toList
 
+
+
+  def recent_posts(user_id: IdentityId): Future[List[MsgInfo]] =
+    for {
+      timeline <- redis.lRange[String](global_timeline, 0, 50)
+      msg_info <- zipMsgInfo(timeline, user_id)
+    } yield msg_info
+
+
+  def load_msg_info(user_id: IdentityId, post_id: String): Future[Option[MsgInfo]] = {
+    for {
+      favorites <- redis.sMembers(user_favorites(user_id))
+      msgOpt <- load_post(post_id)
+    } yield msgOpt.map{
+        msg => MsgInfo(post_id, favorites.contains(post_id), msg)
+      }
+  }
 
   def load_post(post_id: String): Future[Option[Msg]] =
     for {

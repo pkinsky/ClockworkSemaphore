@@ -12,9 +12,6 @@ $(window).load(function () {
 var app = angular.module('app', []);
 
 app.factory('ChatService', function() {
-
-  console.log("spinning up ChatService")
-
   var service = {};
 
 
@@ -90,6 +87,7 @@ function AppCtrl($scope, ChatService) {
   var fetching_messages = [];
 
   $scope.get_message = function(post_id) {
+
     if (messages.hasOwnProperty(post_id)){
         return messages[post_id];
     } else {
@@ -103,7 +101,21 @@ function AppCtrl($scope, ChatService) {
   }
 
 
+  $scope.focus_on_user = function (user_id) {
+    console.log("focus on user " + user_id);
+    $scope.focus = "user-posts";
+    $scope.focused_user = user_id;
+  }
 
+  $scope.focused_user = null;
+
+
+  // 'up one level' actually just up to top-level
+  $scope.up_one_level = function () {
+    $scope.focus = "front-page";
+  }
+
+  $scope.focus = "front-page";
 
   //init to null (binding in init)
   $scope.current_user = null;
@@ -115,31 +127,36 @@ function AppCtrl($scope, ChatService) {
   //array of post-id's
   $scope.recent_messages = [];
 
-  /*
-  $scope.show_followed_posts = function() {
-    $scope.show_recent = false;
-  }
-
-  $scope.show_recent_posts = function() {
-    $scope.show_recent = true;
-  }
-
-  //if true show recent if false show following. just fetch both at start...
-  $scope.show_recent = true;
-  */
 
   $scope.get_messages = function() {
-        //foreach, get_message, then sort by timestamp. simplifies greatly.
-
+    if ($scope.focus == "front-page"){
         var m = _.map($scope.recent_messages, function(post_id) {
             return $scope.get_message(post_id);
         });
+    } else if ($scope.focus="user-posts") {
 
-        var m = _.sortBy(m, function(msg){ return msg.timestamp; });
+        console.log("getting user posts");
 
-        return m.reverse();
+        var user = $scope.get_user($scope.focused_user);
+
+        console.log("getting posts for " + JSON.stringify(user));
+
+
+        var user_posts = user.recent_posts;
+
+        console.log("user posts: " + JSON.stringify(user_posts));
+
+        var m = _.map(user_posts, function(post_id) {
+            return $scope.get_message(post_id);
+        });
+    }
+
+    var m = _.filter(m, function(x){ return x != null; });
+
+    var m = _.sortBy(m, function(msg){ return msg.timestamp; });
+
+    return m.reverse();
   }
-
 
   $scope.set_alias = function() {
     var alias_in = $("#alias").val();
@@ -147,19 +164,16 @@ function AppCtrl($scope, ChatService) {
     ChatService.send( {user_id:$scope.user_id, alias:alias_in} );
   };
 
-
   $scope.push_message = function(post_id, favorite, msg) {
         msg['post_id'] = post_id;
         msg['favorite'] = favorite;
         messages[post_id] = msg;
   }
 
-
   $scope.delete_message = function(message) {
     console.log("delete message");
     ChatService.send( {delete_message:message.post_id} );
   }
-
 
   $scope.favorite_message = function(message) {
     console.log("favorite message: " + JSON.stringify(message))
@@ -175,7 +189,6 @@ function AppCtrl($scope, ChatService) {
         if (!$scope.$$phase) $scope.$apply();
         ChatService.send( {favorite_message:message.post_id} );
     }
-
   }
 
 
@@ -207,7 +220,7 @@ function AppCtrl($scope, ChatService) {
                 //console.log("update!");
                 var user_info = actual['user_info'];
                 fetching_users = _.without(fetching_users, user_info.user_id);
-                users[user_info.user_id] = {'alias': user_info.alias, 'avatar_url': user_info.avatar_url};
+                users[user_info.user_id] = user_info;
             }
 
             if ('alias_result' in actual){

@@ -1,25 +1,42 @@
-@(user_id: String, user_alias: String, user_avatar_url: String)
+@(user_id: String, user_json: String)
 
 @layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl"
-     ng-init="init( '@user_id', {'@user_id':  {'alias': '@user_alias', 'avatar_url': '@user_avatar_url', 'following':false}} )">
+ng-init="init( '@user_id', {'@user_id': @user_json} )">
 
 
 
-    <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
-        <!-- Collect the nav links, forms, and other content for toggling -->
-        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
-            <ul class="nav navbar-nav">
-                <li><a href="logout"><i class="fa fa-power-off fa-6"></i></a></li>
-            </ul>
-        </div>
-    </nav>
+<nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
+        <ul class="nav navbar-nav">
+            <li><a href="logout"><i class="fa fa-power-off fa-6"></i></a></li>
+            <li>
+                <a ng-click="up_one_level()" ng-if="focus!='front-page'">
+                    <i class="fa fa-arrow-circle-o-left fa-6" style="cursor: pointer;"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
 
 
 
 
 
 <div class="row">
+
+    <div class="col-md-4 col-xs-4" ng-if="focus=='user-posts'">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded">
+                {{ get_user(message.user_id).alias }}
+            </div>
+            <div class="panel-body">
+                Panel content
+            </div>
+        </div>
+    </div>
 
     <div class="col-md-8 col-xs-8">
     <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
@@ -30,13 +47,14 @@
 
     <form class="form-inline" ng-submit="set_alias()" ng-if="!signup_complete()" >
         <input type="text" placeholder="pick a pseudonym" class="form-control" id="alias">
+        <!-- <input type="submit" class="form-control" /> -->
     </form>
 
     <br>
 
     <div class="panel panel-tweet" ng-repeat="message in get_messages()">
     <div class="panel-heading">
-        <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded">
+        <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;">
         &nbsp
         {{ get_user(message.user_id).alias }}
     </div>
@@ -44,11 +62,11 @@
         {{ message.body }}
         <span class="offset1 span2 label pull-right">
         <br>
-        <a ng-click="delete_message(message)" ng-if="message.user_id==current_user">
+        <a ng-click="delete_message(message)" ng-if="message.user_id==current_user" style="cursor: pointer;">
             <i class="fa fa-trash-o fa-6"  title="delete post"></i>
         </a>
 
-        <a ng-click="favorite_message(message)" ng-if="message.user_id!=current_user">
+        <a ng-click="favorite_message(message)" ng-if="message.user_id!=current_user" style="cursor: pointer;">
             <i class="fa fa-star-o fa-6" ng-if="!message.favorite"  title="favorite message"></i>
             <i class="fa fa-star fa-6" ng-if="message.favorite" title="unfavorite message"></i>
         </a>

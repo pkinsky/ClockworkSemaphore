@@ -65,7 +65,11 @@ case class AckRequestAlias(alias: String, pass: Boolean) extends JsonMessage{
 }
 
 //user specific, following: is the current user following this dude?
-case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String])
+case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String], recent_posts: List[String]) extends JsonMessage {
+
+  def asJson = Json.toJson(this)
+
+}
 
 case class Update(msg: List[MsgInfo]=Nil,
                   alias_result: Option[AckRequestAlias]=None,
@@ -88,6 +92,8 @@ sealed trait SocketMessage
 case class MakePost(from: IdentityId, msg: Msg)
 
 case class PushPost(to: IdentityId, msg: MsgInfo)
+
+case class RequestPost(to: IdentityId, post_id: String)
 
 case class RecentPosts(user_id: IdentityId)
 

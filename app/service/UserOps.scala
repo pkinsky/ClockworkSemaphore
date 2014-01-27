@@ -63,9 +63,13 @@ trait UserOps extends RedisSchema with RedisConfig{
     for {
       id <- get_user(user_id)
       alias <- get_alias(user_id)
+      posts <- get_user_posts(user_id)
     } yield {
-      PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl)
+      PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl, posts)
     }
   }
+
+  protected def get_user_posts(user_id: IdentityId): Future[List[String]] =
+    redis.lRange[String](user_posts(user_id), 0, 50)
 
 }

@@ -41,7 +41,11 @@ object AppController extends Controller with SecureSocial {
 
       val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
 
-      Ok(views.html.app.index(user_id.asString, user.alias, user.avatar_url.getOrElse("")))
+      val user_json = user.asJson.toString()
+
+      log.info(s"init json: $user_json")
+
+      Ok(views.html.app.index(user_id.asString, user_json))
     }
   }
 
@@ -73,6 +77,9 @@ object AppController extends Controller with SecureSocial {
 
                 case JsObject(Seq(("alias", JsString(alias)))) =>
                   socketActor ! RequestAlias(userId, alias)
+
+                case JsObject(Seq(("post_id", JsString(post_id)))) =>
+                  socketActor ! RequestPost(userId, post_id)
 
                 case JsObject(Seq(("delete_message", JsString(post_id)))) =>
                   socketActor ! DeleteMessage(userId, post_id)
