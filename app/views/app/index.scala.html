@@ -38,7 +38,7 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
         </div>
     </div>
 
-    <div class="col-md-6 col-md-offset-3">
+    <div class="col-md-6" id="tweet_column">
     <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
