@@ -161,19 +161,7 @@ function AppCtrl($scope, ChatService) {
   $scope.set_alias = function() {
     var alias_in = $("#alias").val();
     console.log("setting alias: " + alias_in);
-    $('#alias').transition({
-            rotate: '+=10deg',
-            x: '+=3'
-        }).transition({
-            rotate: '-=15deg',
-            x: '-=5'
-        }).transition({
-            rotate: '+=10deg',
-            x: '+=3'
-        }).transition({
-            rotate: '-=5deg',
-            x: '-=1'
-        });
+
     //show error text. perhaps add error text, make red after first fail
     if (alias_in.length > 32){
     $('#alias').transition({
