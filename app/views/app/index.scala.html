@@ -26,7 +26,7 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
 
 <div class="row">
 
-    <div class="col-md-3" ng-if="focus=='user-posts'">
+    <div class="col-md-3" ng-show="focus=='user-posts'">
         <div class="panel panel-default">
             <div class="panel-heading">
                 <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded">
