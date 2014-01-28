@@ -86,20 +86,18 @@ class SocketActor extends Actor {
 
 
     case RequestAlias(user_id, alias) =>
-        //log.info(s"user $user_id requesting alias $alias")
-        val trimmed = alias.trim
+      val trimmed = alias.trim
 
-        if (trimmed.contains(" ")){ //seperate validation somehow
-          log.error(s"bad user id: $user_id")
-        } else {
+      if (trimmed.length > 32){
+        log.error(s"oversized alias $trimmed made it through client side validation.")
+      }else{
+        val alias_f = redisService.establish_alias(user_id, trimmed)
 
-          val alias_f = redisService.establish_alias(user_id, trimmed)
-
-          alias_f.map(result => AckRequestAlias(trimmed, result)).onComplete{
-            case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
-            case Failure(t) => log.error(s"error requesting alias: $t")
-          }
+        alias_f.map(result => AckRequestAlias(trimmed, result)).onComplete{
+          case Success(ar) => webSockets(user_id).channel push Update(alias_result = Some(ar)).asJson
+          case Failure(t) => log.error(s"error requesting alias: $t")
         }
+      }
 
 
 
@@ -118,6 +116,7 @@ class SocketActor extends Actor {
       }
     }
 
+
     case PushPost(to, msg_info) => {
       log.info(s"pushing msg info: $msg_info to $to" )
       webSockets(to).channel push Update(
@@ -125,6 +124,7 @@ class SocketActor extends Actor {
         recent_messages = msg_info.post_id :: Nil
       ).asJson
     }
+
 
     case RequestPost(to, post_id) => {
       log.info(s"load msg info for post_id:$post_id")
@@ -140,6 +140,7 @@ class SocketActor extends Actor {
       log.info(s"$user_id favorite $post_id")
       redisService.add_favorite_post(user_id, post_id)
     }
+
 
     case UnFavoriteMessage(user_id, post_id) => {
       log.info(s"$user_id unfavorite $post_id")
@@ -193,7 +194,6 @@ class SocketActor extends Actor {
       } else {
         removeUserChannel(user_id)
       }
-
   }
 
   def removeUserChannel(user_id: IdentityId) = {
