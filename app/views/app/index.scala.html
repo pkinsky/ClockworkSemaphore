@@ -2,7 +2,7 @@
 
 @layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl"
-ng-init="init( '@user_id', {'@user_id': @user_json} )">
+ng-init="init( '@user_id', @user_json )">
 
 
 
@@ -26,20 +26,28 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
 
 <div class="row">
 
-    <div class="col-lg-2 col-md-2 col-sm-2">
+    <div class="col-lg-3 col-md-3 col-sm-3">
         <!-- (left sidebar) -->
         <div class="panel panel-default" ng-if="focus=='user-posts'">
             <div class="panel-heading">
                 <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded">
-                {{ get_user(message.user_id).alias }}
+                &nbsp
+                {{ get_user(focused_user).alias }}
             </div>
             <div class="panel-body">
-                Panel content
+            <!-- credit: a markov chain fed the works of william gibson care of loremgibson.com -->
+                Likes:
+                    <ul>Post-ironic hashtag vinyl</ul>
+                    <ul>Papier-mache computers</ul>
+                    <ul>Sub-orbital wonton soup</ul>
+                Dislikes
+                    <ul>Whatever swag</ul>
+                    <ul>Math-cartel marketing</ul>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-8 col-md-8 col-sm-8" id="tweet_column">
+    <div class="col-lg-6 col-md-6 col-sm-6" id="tweet_column">
     <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
@@ -77,7 +85,7 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
     </div>
     </div>
 
-    <div class="col-lg-2 col-md-2 col-sm-2">
+    <div class="col-lg-3 col-md-3 col-sm-3">
         <!-- (right sidebar) -->
     </div>
 </div>

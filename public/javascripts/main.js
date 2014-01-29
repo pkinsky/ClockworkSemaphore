@@ -8,6 +8,34 @@ $(window).load(function () {
    $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
 });
 
+//thank you http://stackoverflow.com/users/96100/tim-down
+function StringSet() {
+    var setObj = {}, val = {};
+
+    this.add = function(str) {
+        setObj[str] = val;
+    };
+
+    this.contains = function(str) {
+        return setObj[str] === val;
+    };
+
+    this.remove = function(str) {
+        delete setObj[str];
+    };
+
+    this.values = function() {
+        var values = [];
+        for (var i in setObj) {
+            if (setObj[i] === val) {
+                values.push(i);
+            }
+        }
+        return values;
+    };
+}
+
+
 var app = angular.module('app', []);
 
 app.factory('ChatService', function() {
@@ -59,21 +87,22 @@ function AppCtrl($scope, ChatService) {
   //map of user_id => object describing public components of user
   $scope.init = function (current_user, user_info) {
     $scope.current_user = current_user;
-    users = user_info;
+
+    $scope.push_user_info(user_info);
   }
 
 
   var users = {};
-  var fetching_users = [];
+  var fetching_users = new StringSet();
 
   $scope.get_user = function(user_id) {
     if (users.hasOwnProperty(user_id)){
         return users[user_id];
     } else {
-        if (_.contains(fetching_users, user_id)) {
+        if (fetching_users.contains(user_id)) {
             return null;
         } else {
-            fetching_users.push(user_id);
+            fetching_users.add(user_id);
             ChatService.send( {user_id: user_id} );
         }
     }
@@ -82,7 +111,7 @@ function AppCtrl($scope, ChatService) {
 
 
   var messages = {};
-  var fetching_messages = [];
+  var fetching_messages = new StringSet();
 
   $scope.get_message = function(post_id) {
 
@@ -91,10 +120,10 @@ function AppCtrl($scope, ChatService) {
     if (messages.hasOwnProperty(post_id)){
         return messages[post_id];
     } else {
-        if (_.contains(fetching_messages, post_id)) {
+        if (fetching_messages.contains(post_id)) {
             return null;
         } else {
-            fetching_messages.push(post_id);
+            fetching_messages.add(post_id);
             ChatService.send( {post_id: post_id} );
         }
     }
@@ -126,19 +155,21 @@ function AppCtrl($scope, ChatService) {
   };
 
   //array of post-id's
-  $scope.recent_messages = [];
+  $scope.recent_messages = new StringSet();
 
 
   $scope.get_messages = function() {
     if ($scope.focus == "front-page"){
-        var m = _.map($scope.recent_messages, function(post_id) {
+        var recent = $scope.recent_messages.values();
+        console.log("recent messages => " + recent)
+        var m = _.map(recent, function(post_id) {
             return $scope.get_message(post_id);
         });
     } else if ($scope.focus="user-posts") {
         //console.log("getting user posts");
         var user = $scope.get_user($scope.focused_user);
         //console.log("getting posts for " + JSON.stringify(user));
-        var user_posts = user.recent_posts;
+        var user_posts = user.recent_posts.values();
         //console.log("user posts: " + JSON.stringify(user_posts));
 
         var m = _.map(user_posts, function(post_id) {
@@ -178,6 +209,25 @@ function AppCtrl($scope, ChatService) {
     }
   };
 
+
+  $scope.push_user_info = function(user_info) {
+
+        var recent_posts = new StringSet();
+        user_info.recent_posts.forEach( function(post_id){
+                recent_posts.add(post_id);
+            }
+        );
+        user_info.recent_posts = recent_posts;
+
+        console.log("    pre: " + JSON.stringify(users));
+        users[user_info.user_id] = user_info;
+        console.log("    post: " + JSON.stringify(users));
+
+  }
+
+
+
+
   $scope.push_message = function(post_id, favorite, msg) {
         msg['post_id'] = post_id;
         msg['favorite'] = favorite;
@@ -188,7 +238,7 @@ function AppCtrl($scope, ChatService) {
 
         if (author != null){
             //here we assume the same message isn't being pushed twice. Should probably look out for that upstream
-            author.recent_posts.push(msg.post_id);
+            author.recent_posts.add(msg.post_id);
         }
   }
 
@@ -225,6 +275,9 @@ function AppCtrl($scope, ChatService) {
                     var post_id = msg_info.post_id;
                     var favorite = msg_info.favorite;
                     var msg = msg_info.msg;
+
+                    fetching_messages.remove(post_id);
+
                     //console.log("pushing message for info " + msg_info)
                     $scope.push_message(post_id, favorite, msg);
                 });
@@ -233,16 +286,16 @@ function AppCtrl($scope, ChatService) {
             if ('recent_messages' in actual){
                 var recent = actual['recent_messages'];
                 recent.forEach(function(post_id){
-                    $scope.recent_messages.unshift(post_id);
+                    $scope.recent_messages.add(post_id);
                 });
             }
 
 
             if ('user_info' in actual){
-                //console.log("update!");
                 var user_info = actual['user_info'];
-                fetching_users = _.without(fetching_users, user_info.user_id);
-                users[user_info.user_id] = user_info;
+                fetching_users.remove(user_info.user_id);
+
+                $scope.push_user_info(user_info);
             }
 
             if ('alias_result' in actual){
