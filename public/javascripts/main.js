@@ -8,12 +8,10 @@ $(window).load(function () {
    $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
 });
 
-
 var app = angular.module('app', []);
 
 app.factory('ChatService', function() {
   var service = {};
-
 
   function ws_url(s) {
       var l = window.location;
@@ -88,6 +86,8 @@ function AppCtrl($scope, ChatService) {
 
   $scope.get_message = function(post_id) {
 
+    console.log("get_message: " + post_id + " from messages: " + JSON.stringify(messages));
+
     if (messages.hasOwnProperty(post_id)){
         return messages[post_id];
     } else {
@@ -101,14 +101,15 @@ function AppCtrl($scope, ChatService) {
   }
 
 
-  $scope.focus_on_user = function (user_id) {
-    console.log("focus on user " + user_id);
-    $scope.focus = "user-posts";
-    $scope.focused_user = user_id;
-  }
-
   $scope.focused_user = null;
 
+  $scope.focus_on_user = function (focus_user) {
+    console.log("focus on user " + focus_user);
+    ChatService.send( {user_id:focus_user} );
+
+    $scope.focus = "user-posts";
+    $scope.focused_user = focus_user;
+  }
 
   // 'up one level' actually just up to top-level
   $scope.up_one_level = function () {
@@ -134,17 +135,11 @@ function AppCtrl($scope, ChatService) {
             return $scope.get_message(post_id);
         });
     } else if ($scope.focus="user-posts") {
-
-        console.log("getting user posts");
-
+        //console.log("getting user posts");
         var user = $scope.get_user($scope.focused_user);
-
-        console.log("getting posts for " + JSON.stringify(user));
-
-
+        //console.log("getting posts for " + JSON.stringify(user));
         var user_posts = user.recent_posts;
-
-        console.log("user posts: " + JSON.stringify(user_posts));
+        //console.log("user posts: " + JSON.stringify(user_posts));
 
         var m = _.map(user_posts, function(post_id) {
             return $scope.get_message(post_id);
@@ -187,6 +182,14 @@ function AppCtrl($scope, ChatService) {
         msg['post_id'] = post_id;
         msg['favorite'] = favorite;
         messages[post_id] = msg;
+
+        var author = $scope.get_user(msg.user_id);
+        console.log("author => " + author + " for message => " + JSON.stringify(msg))
+
+        if (author != null){
+            //here we assume the same message isn't being pushed twice. Should probably look out for that upstream
+            author.recent_posts.push(msg.post_id);
+        }
   }
 
   $scope.delete_message = function(message) {
@@ -216,9 +219,9 @@ function AppCtrl($scope, ChatService) {
             var actual = jQuery.parseJSON(message)
 
             if ('msg' in actual){
-                var messages = actual['msg'];
+                var new_messages = actual['msg'];
 
-                messages.forEach(function(msg_info) {
+                new_messages.forEach(function(msg_info) {
                     var post_id = msg_info.post_id;
                     var favorite = msg_info.favorite;
                     var msg = msg_info.msg;
@@ -231,7 +234,7 @@ function AppCtrl($scope, ChatService) {
                 var recent = actual['recent_messages'];
                 recent.forEach(function(post_id){
                     $scope.recent_messages.unshift(post_id);
-                })
+                });
             }
 
 
@@ -250,8 +253,17 @@ function AppCtrl($scope, ChatService) {
                 }
             }
 
+            actual.deleted.forEach(function(post_id){
+                //console.log("handling deleted: " + post_id);
+                //console.log("    pre: " + JSON.stringify(messages));
+                delete messages[post_id];
+                //console.log("    post: " + JSON.stringify(messages));
+            });
+
+
             //some voodoo for a concise delete.
-            $scope.recent_messages = _.filter($scope.recent_messages, function(post_id){ return !_.contains(actual.deleted, post_id);});
+            //need to do a proper foreach delete of post_id->msg from map,
+            //after this is sent said message doesn't exist server-side anyway
 
             $scope.$apply();
       }

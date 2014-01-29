@@ -7,4 +7,20 @@
     - website
 
 
-4. testing framework based around functions with unapply: capture function object somehow, case match on expected...?
+4. testing framework based around functions with unapply: capture function object somehow, case match on expected arguments? now I just want to see if that will work
+    -curried functions. have a framework like
+        - val x = fmwk.prepare(param1, param2)
+        - fmwk.execute(x)
+        - (monadic?) produce sequence of functions representing SQL actions, execute in parallel?
+        - can instead test using unapply. super easy like woah too:
+            case Seq(Func(1,2,3), Func(2,3,4), Func(5,6,7)) => true; case _ => false
+
+5. when a client page receives a post, that post must be added to the corresponding user's list of posts, specifically for user-posts focus.
+    - solution: when focused on a user, make request for updated user info.
+    - update user info opportunistically
+        (fail silently on users if user info object is present)
+        (will have user info object post user-posts focus if no errors)
+
+
+6. scala-to-javascript: make it so that the client can be represented as an akka actor using websockets,
+    and communication between server and client can be written as actors. eh, listed as a long term goal on scala-js website. sounds like a phd project. would be nice, though

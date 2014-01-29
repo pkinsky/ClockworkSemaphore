@@ -28,7 +28,7 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
 
     <div class="col-lg-2 col-md-2 col-sm-2">
         <!-- (left sidebar) -->
-        <div class="panel panel-default" ng-show="focus=='user-posts'">
+        <div class="panel panel-default" ng-if="focus=='user-posts'">
             <div class="panel-heading">
                 <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded">
                 {{ get_user(message.user_id).alias }}
