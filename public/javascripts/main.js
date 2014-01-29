@@ -307,16 +307,12 @@ function AppCtrl($scope, ChatService) {
             }
 
             actual.deleted.forEach(function(post_id){
-                //console.log("handling deleted: " + post_id);
+                //console.log("handling delete: " + post_id);
                 //console.log("    pre: " + JSON.stringify(messages));
                 delete messages[post_id];
                 //console.log("    post: " + JSON.stringify(messages));
             });
 
-
-            //some voodoo for a concise delete.
-            //need to do a proper foreach delete of post_id->msg from map,
-            //after this is sent said message doesn't exist server-side anyway
 
             $scope.$apply();
       }
