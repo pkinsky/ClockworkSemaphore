@@ -26,8 +26,9 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
 
 <div class="row">
 
-    <div class="col-md-3" ng-show="focus=='user-posts'">
-        <div class="panel panel-default">
+    <div class="col-lg-2 col-md-2 col-sm-2">
+        <!-- (left sidebar) -->
+        <div class="panel panel-default" ng-show="focus=='user-posts'">
             <div class="panel-heading">
                 <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded">
                 {{ get_user(message.user_id).alias }}
@@ -38,7 +39,7 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
         </div>
     </div>
 
-    <div class="col-md-6" id="tweet_column">
+    <div class="col-lg-8 col-md-8 col-sm-8" id="tweet_column">
     <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
@@ -74,9 +75,10 @@ ng-init="init( '@user_id', {'@user_id': @user_json} )">
     </span>
     </div>
     </div>
+    </div>
 
-
-
+    <div class="col-lg-2 col-md-2 col-sm-2">
+        <!-- (right sidebar) -->
     </div>
 </div>
 

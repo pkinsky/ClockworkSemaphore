@@ -5,3 +5,6 @@
         make info panel editable if current user is focused on. show username and/or avatar in navbar to provide link if no posts on screen by current user
     - about me
     - website
+
+
+4. testing framework based around functions with unapply: capture function object somehow, case match on expected...?

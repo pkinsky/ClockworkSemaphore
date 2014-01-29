@@ -177,7 +177,7 @@ function AppCtrl($scope, ChatService) {
             rotate: '-=5deg',
             x: '-=1'
         });
-        alert("oh noes too long");
+        //alert("oh noes too long");
     }else{
         ChatService.send( {user_id:$scope.user_id, alias:alias_in} );
     }
