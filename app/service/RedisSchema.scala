@@ -32,4 +32,7 @@ trait RedisSchema {
   //posts made by a user
   protected def user_posts(user_id: IdentityId): String = s"user:${user_id.asString}:posts"
 
+
+  protected def user_about_me(user_id: IdentityId) = s"user:${user_id.asString}:about_me"
+
 }

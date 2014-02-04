@@ -78,6 +78,9 @@ object AppController extends Controller with SecureSocial {
                 case JsObject(Seq(("alias", JsString(alias)))) =>
                   socketActor ! RequestAlias(userId, alias)
 
+                case JsObject(Seq(("about_me", JsString(about_me)))) =>
+                  socketActor ! SetAboutMe(userId, about_me)
+
                 case JsObject(Seq(("post_id", JsString(post_id)))) =>
                   socketActor ! RequestPost(userId, post_id)
 

@@ -28,5 +28,9 @@ trait RedisService {
 
     def establish_alias(user_id: IdentityId, alias: String): Future[Boolean]
 
+    def set_about_me(user_id: IdentityId, text: String): Future[Unit]
+
+    def get_about_me(user_id: IdentityId): Future[Option[String]]
+
     def load_msg_info(user_id: IdentityId, post_id: String): Future[Option[MsgInfo]]
   }

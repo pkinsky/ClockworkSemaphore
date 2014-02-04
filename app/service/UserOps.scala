@@ -10,6 +10,7 @@ import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
 import actors.ApplicativeStuff._
+import scalaz.syntax.applicative.ToApplyOps
 
 
 
@@ -46,6 +47,11 @@ trait UserOps extends RedisSchema with RedisConfig{
     }
   }
 
+  def set_about_me(user_id: IdentityId, text: String): Future[Unit] = {
+    redis.set(user_about_me(user_id), text)
+  }
+
+  def get_about_me(user_id: IdentityId): Future[Option[String]] = redis.get[String](user_about_me(user_id))
 
   def get_user(user_id: IdentityId): Future[Identity] =
     redis.get[JsValue](user_identity(user_id))(parser=ParseJs).map{ json =>
@@ -59,15 +65,14 @@ trait UserOps extends RedisSchema with RedisConfig{
     }
 
 
-  def get_public_user(current_user: IdentityId, user_id: IdentityId): Future[PublicIdentity] = {
-    for {
-      id <- get_user(user_id)
-      alias <- get_alias(user_id)
-      posts <- get_user_posts(user_id)
-    } yield {
-      PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl, posts)
-    }
-  }
+  def get_public_user(current_user: IdentityId, user_id: IdentityId): Future[PublicIdentity] = 
+    (get_user(user_id) |@|
+    get_alias(user_id) |@|
+    get_user_posts(user_id) |@|
+    get_about_me(user_id)){ 
+	(id, alias, posts, about_me) =>
+	      PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl, posts, about_me.getOrElse(""))
+	}
 
   protected def get_user_posts(user_id: IdentityId): Future[List[String]] =
     redis.lRange[String](user_posts(user_id), 0, 50)
