@@ -36,6 +36,8 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
     val fJson = RedisServiceImpl.get_user(id).map(Some(_)).recover{ case _ => None}
     val json = Await.result(fJson, 1 second)
 
+    log.info("find user")
+
     json
   }
 
@@ -44,7 +46,7 @@ class RedisUserService(application: Application) extends UserServicePlugin(appli
   def save(user: Identity): Identity = {
 
     Await.result(RedisServiceImpl.save_user(user), 1 second)
-
+    log.info("save user")
     user
   }
 

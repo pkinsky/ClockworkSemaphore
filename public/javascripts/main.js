@@ -36,7 +36,11 @@ function StringSet() {
 }
 
 
-var app = angular.module('app', []);
+var app = angular.module('app', ["xeditable"]);
+
+app.run(function(editableOptions) {
+  editableOptions.theme = 'bs3'; // bootstrap3 theme. Can be also 'bs2', 'default'
+});
 
 app.factory('ChatService', function() {
   var service = {};
@@ -88,7 +92,7 @@ function AppCtrl($scope, ChatService) {
   $scope.init = function (current_user, user_info) {
     $scope.current_user = current_user;
 
-    $scope.push_user_info(user_info);
+    push_user_info(user_info);
   }
 
 
@@ -107,6 +111,12 @@ function AppCtrl($scope, ChatService) {
         }
     }
   }
+
+  $scope.update_about_me = function() {
+      var about_me = $scope.user_info[$scope.current_user].about_me;
+      console.log("update about me to " + about_me);
+      ChatService.send( {about_me:$scope.user_id} );
+  };
 
 
 
@@ -152,7 +162,7 @@ function AppCtrl($scope, ChatService) {
 
   $scope.signup_complete = function () {
     return users[$scope.current_user].alias.length != 0;
-  };
+  }
 
   //array of post-id's
   $scope.recent_messages = new StringSet();
@@ -210,8 +220,7 @@ function AppCtrl($scope, ChatService) {
   };
 
 
-  $scope.push_user_info = function(user_info) {
-
+  push_user_info = function(user_info) {
         var recent_posts = new StringSet();
         user_info.recent_posts.forEach( function(post_id){
                 recent_posts.add(post_id);
@@ -222,7 +231,6 @@ function AppCtrl($scope, ChatService) {
         console.log("    pre: " + JSON.stringify(users));
         users[user_info.user_id] = user_info;
         console.log("    post: " + JSON.stringify(users));
-
   }
 
 
@@ -295,7 +303,7 @@ function AppCtrl($scope, ChatService) {
                 var user_info = actual['user_info'];
                 fetching_users.remove(user_info.user_id);
 
-                $scope.push_user_info(user_info);
+                push_user_info(user_info);
             }
 
             if ('alias_result' in actual){
