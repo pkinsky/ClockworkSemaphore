@@ -113,9 +113,9 @@ function AppCtrl($scope, ChatService) {
   }
 
   $scope.update_about_me = function() {
-      var about_me = $scope.user_info[$scope.current_user].about_me;
+      var about_me = $scope.get_user($scope.current_user).about_me;
       console.log("update about me to " + about_me);
-      ChatService.send( {about_me:$scope.user_id} );
+      ChatService.send( { about_me: about_me } );
   };
 
 
@@ -125,7 +125,7 @@ function AppCtrl($scope, ChatService) {
 
   $scope.get_message = function(post_id) {
 
-    console.log("get_message: " + post_id + " from messages: " + JSON.stringify(messages));
+    //console.log("get_message: " + post_id + " from messages: " + JSON.stringify(messages));
 
     if (messages.hasOwnProperty(post_id)){
         return messages[post_id];

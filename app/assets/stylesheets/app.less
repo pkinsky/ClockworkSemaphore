@@ -2,6 +2,8 @@
 
 
 @clouds:#ECF0F1;
+@silver:#BDC3C7;
+
 @concrete:#95A5A6;
 
 @asphalt:#34495E;
@@ -12,7 +14,7 @@
 @peter-river:#3498DB;
 
 
-
+@text-highlight:@silver;
 @text-main:@clouds;
 
 
@@ -22,6 +24,23 @@
 @border-width:1px;
 @border-color:@midnight-blue;
 
+
+.preserve-whitespace{
+    white-space: pre !important;
+}
+
+
+.editable-input {
+    rows : 15 !important;
+}
+
+a.editable-click {
+    color: @text-main !important;
+    border-bottom: none !important;
+}
+a.editable-click:hover {
+    color: @text-highlight !important;
+}
 
 
 input[type="text"], textarea {

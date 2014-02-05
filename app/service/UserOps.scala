@@ -70,9 +70,9 @@ trait UserOps extends RedisSchema with RedisConfig{
     get_alias(user_id) |@|
     get_user_posts(user_id) |@|
     get_about_me(user_id)){ 
-	(id, alias, posts, about_me) =>
-	      PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl, posts, about_me.getOrElse(""))
-	}
+    (id, alias, posts, about_me) =>
+          PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl, posts, about_me.getOrElse("click here to edit about me"))
+    }
 
   protected def get_user_posts(user_id: IdentityId): Future[List[String]] =
     redis.lRange[String](user_posts(user_id), 0, 50)

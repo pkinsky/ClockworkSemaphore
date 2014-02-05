@@ -84,7 +84,8 @@ class SocketActor extends Actor {
       }
 
 	
-    case SetAboutMe(user_id, about_me) => 
+    case SetAboutMe(user_id, about_me) =>
+      log.info(s"set about me for $user_id to $about_me")
       redisService.set_about_me(user_id, about_me).onComplete{
         case Failure(t) => log.error(s"set about me fail: $t")
         case Success(_) =>  //todo: ack success? Just set new about_me client-side and assume set succeeded? Let's start with #2 because fuckit, and move to #1 later
