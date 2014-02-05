@@ -5,8 +5,10 @@
 ng-init="init( '@user_id', @user_json )">
 
 
+    <a href="#" editable-text="current_user" onaftersave="update_about_me()">{{ current_user }}</a>
 
-<nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
+
+    <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
     <!-- Collect the nav links, forms, and other content for toggling -->
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
         <ul class="nav navbar-nav">
