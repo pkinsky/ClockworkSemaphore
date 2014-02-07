@@ -138,18 +138,18 @@ class SocketActor extends Actor {
       log.info(s"load msg info for post_id:$post_id")
       redisService.load_msg_info(to, post_id).onComplete{
         case Success(Some(msg)) => self ! PushPost(to, msg)
-        case Success(None) => log.error(s"msg not found")
+        case Success(None) => log.error(s"msg not found") //every time a user reqs a deleted message
         case Failure(t) => log.error(s"msg not found due to error $t")
       }
     }
 
-
+    //ui will only present option for unfavorited messages. In (edge) case where already favorite, silent no-op
     case FavoriteMessage(user_id, post_id) => {
       log.info(s"$user_id favorite $post_id")
       redisService.add_favorite_post(user_id, post_id)
     }
 
-
+    //ui will only present option for favorited messages. In (edge) case where not favorite already, silent no-op
     case UnFavoriteMessage(user_id, post_id) => {
       log.info(s"$user_id unfavorite $post_id")
       redisService.remove_favorite_post(user_id, post_id)
