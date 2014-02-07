@@ -159,36 +159,18 @@ class SocketActor extends Actor {
     case DeleteMessage(userId, post_id) => {
       log.info(s"delete message $post_id")
 
-      //todo: secure
-      redisService.delete_post(post_id).onComplete{
-        case Success(_) => send(userId)( Update(deleted = Set(post_id)))
-        case Failure(t) => log.error(s"failed to delete post due to $t")
-      }
 
-      /*check that requester is author of post before deletion
-      val r = for {
-        post <- redisService.load_post(post_id)
-
-      //ACK by sending a deleted message. use deleted: Set[String]
-
-      TO FUCKING DO
-
-        _ <- { if (post.user_id != userId){
-                    //log.info(s" post.userid ${post.user_id} != userId $userId")
-                    Future.failed(new Exception("can't delete another user's posts"))
-             }else
-                    Applicative[Future].point{ () }
-             }
-
-        _ <-
+      val delete = for {
+          post <- redisService.load_post(post_id)
+          if !post.isEmpty && post.get.user_id == userId //check that user is deleting own post
+          _ <- redisService.delete_post(post_id)
       } yield ()
-      */
-      //get post
-      //if user_id same as post.user_id delete,
-      //else error
-      //need to send deleted_posts with update
 
 
+      delete.onComplete{
+        case Success(_) => send(userId)( Update(deleted = Set(post_id)))
+        case Failure(t) => log.error(s"failed to delete post due to $t") //if nosuch element exception, if statement filtered out result
+      }
     }
 
     case SocketClosed(user_id) =>
