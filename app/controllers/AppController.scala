@@ -25,18 +25,24 @@ import akka.event.slf4j.Logger
 import service._
 
 import IdentityIdConverters._
+import play.api.mvc.Security.AuthenticatedBuilder
 
 
 object AppController extends Controller {
-  lazy val log = Logger("application." + this.getClass.getName)
+  lazy val log = Logger(s"application.${this.getClass.getName}")
+
+  def get_user_id(req: RequestHeader) = req.session.get("login")
+
+  object Authenticated extends AuthenticatedBuilder(req => get_user_id(req))
+
 
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
 
-  def index = Action  {
+  def index = Authenticated  {
     implicit request => {
-      val user_id = IdentityId("foobar")
+      val user_id = IdentityId(request.user)
 
       val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
 
@@ -57,7 +63,9 @@ object AppController extends Controller {
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
 
-        val userId = IdentityId("foobar")
+        val userIdOpt = get_user_id(requestHeader)
+		
+		userIdOpt.map(IdentityId(_)).map{ userId =>
 
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
@@ -99,6 +107,7 @@ object AppController extends Controller {
 
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
           }
+	}.getOrElse(errorFuture)
   }
 
   def javascriptRoutes = Action {

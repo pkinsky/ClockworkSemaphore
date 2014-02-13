@@ -10,3 +10,9 @@ GET     /websocket/                 controllers.AppController.indexWS
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/javascripts/routes  controllers.AppController.javascriptRoutes
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
+
+
+#login flow
+GET /signin  						controllers.Auth.signin
+GET /signout  						controllers.Auth.signout
+GET /callback  						controllers.Auth.callback

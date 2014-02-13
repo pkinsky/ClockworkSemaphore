@@ -23,7 +23,7 @@ object Identity {
 }
 
 
-case class Identity(user_id: IdentityId)
+case class Identity(user_id: IdentityId, name: String, avatar_url: String)
 
 case class IdentityId(user_id: String)
 
@@ -84,7 +84,7 @@ trait UserOps extends RedisSchema with RedisConfig{
     get_user_posts(user_id) |@|
     get_about_me(user_id)){
     (id, alias, posts, about_me) =>
-          PublicIdentity(id.user_id.asString, alias.getOrElse(""), None, posts, about_me.getOrElse("click here to edit about me"))
+          PublicIdentity(id.user_id.asString, alias.getOrElse(""), Some(id.avatar_url), posts, about_me.getOrElse("click here to edit about me"))
     }
 
   protected def get_user_posts(user_id: IdentityId): Future[List[String]] =
