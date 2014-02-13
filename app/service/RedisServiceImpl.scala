@@ -10,7 +10,6 @@ import actors._
 import scala.concurrent.Future
 import scalaz.syntax.applicative.ToApplyOps
 import scredis.parsing.Parser
-import securesocial.core._
 import play.api.libs.json._
 
 import scala.collection.JavaConversions._
@@ -24,7 +23,6 @@ import  Scalaz.ToIdOps
 
 
 import IdentityIdConverters._
-import IdentityToJson._
 
 import actors.ApplicativeStuff._
 

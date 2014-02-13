@@ -1,18 +1,31 @@
 package service
 
-import securesocial.core._
 import scala.concurrent.Future
 import scalaz.Applicative
 import actors.PublicIdentity
 import IdentityIdConverters._
-import IdentityToJson._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
 import actors.ApplicativeStuff._
 import scalaz.syntax.applicative.ToApplyOps
 
+import scredis.parsing.Parser
 
+
+object IdentityId {
+  implicit val format = Json.format[IdentityId]
+}
+
+
+object Identity {
+  implicit val format = Json.format[Identity]
+}
+
+
+case class Identity(user_id: IdentityId)
+
+case class IdentityId(user_id: String)
 
 trait UserOps extends RedisSchema with RedisConfig{
 
@@ -31,7 +44,7 @@ trait UserOps extends RedisSchema with RedisConfig{
 
   def save_user(user: Identity): Future[Unit] = {
     val user_json = Json.toJson[Identity](user).toString
-    redis.set(user_identity(user.identityId), user_json)
+    redis.set(user_identity(user.user_id), user_json)
   }
 
   private def get_alias(user_id: IdentityId): Future[Option[String]] = {
@@ -65,16 +78,21 @@ trait UserOps extends RedisSchema with RedisConfig{
     }
 
 
-  def get_public_user(current_user: IdentityId, user_id: IdentityId): Future[PublicIdentity] = 
+  def get_public_user(current_user: IdentityId, user_id: IdentityId): Future[PublicIdentity] =
     (get_user(user_id) |@|
     get_alias(user_id) |@|
     get_user_posts(user_id) |@|
-    get_about_me(user_id)){ 
+    get_about_me(user_id)){
     (id, alias, posts, about_me) =>
-          PublicIdentity(id.identityId.asString, alias.getOrElse(""), id.avatarUrl, posts, about_me.getOrElse("click here to edit about me"))
+          PublicIdentity(id.user_id.asString, alias.getOrElse(""), None, posts, about_me.getOrElse("click here to edit about me"))
     }
 
   protected def get_user_posts(user_id: IdentityId): Future[List[String]] =
     redis.lRange[String](user_posts(user_id), 0, 50)
 
+}
+
+
+object ParseJs extends Parser[JsValue]{
+    protected def parseImpl(bytes: Array[Byte]): JsValue = Json.parse(new String(bytes, "UTF-8"))
 }

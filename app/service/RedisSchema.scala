@@ -1,7 +1,6 @@
 package service
 
 import IdentityIdConverters._
-import securesocial.core.IdentityId
 
 /**
  * Created by paul on 1/26/14.

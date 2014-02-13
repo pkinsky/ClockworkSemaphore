@@ -2,11 +2,11 @@ package actors
 
 import play.api.libs.json._
 import service.IdentityIdConverters._
-import securesocial.core.IdentityId
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
 import play.api.libs.json.JsNumber
 
+import service.IdentityId
 
 sealed trait JsonMessage{
   def asJson: JsValue

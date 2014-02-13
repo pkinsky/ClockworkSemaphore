@@ -21,23 +21,22 @@ import actors.SocketClosed
 import play.api.Routes
 import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
-import securesocial.core.SecureSocial
 import akka.event.slf4j.Logger
 import service._
 
 import IdentityIdConverters._
 
 
-object AppController extends Controller with SecureSocial {
+object AppController extends Controller {
   lazy val log = Logger("application." + this.getClass.getName)
 
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
 
-  def index = SecuredAction  {
+  def index = Action  {
     implicit request => {
-      val user_id = SecureSocial.currentUser.get.identityId
+      val user_id = IdentityId("foobar")
 
       val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
 
@@ -58,9 +57,7 @@ object AppController extends Controller with SecureSocial {
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
 
-      SecureSocial.currentUser.map{u =>
-
-        val userId = u.identityId
+        val userId = IdentityId("foobar")
 
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
@@ -102,10 +99,9 @@ object AppController extends Controller with SecureSocial {
 
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
           }
-      }.getOrElse(errorFuture)
   }
 
-  def javascriptRoutes = SecuredAction {
+  def javascriptRoutes = Action {
     implicit request =>
       Ok(
         Routes.javascriptRouter("jsRoutes")(
