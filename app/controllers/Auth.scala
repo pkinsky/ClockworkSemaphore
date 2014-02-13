@@ -40,9 +40,9 @@ object Auth extends Controller {
 		name: String
 	)
 
-  def signin() = Action { Redirect(GITHUB.signIn) }
+  def login() = Action { Redirect(GITHUB.logIn) }
  
-  def signout() = Action { Redirect(routes.AppController.index).withSession() }
+  def logout() = Action { Redirect(routes.AppController.index).withSession() }
  
   def callback() = Action { implicit request =>
     params("code").flatMap { code =>
@@ -51,7 +51,7 @@ object Auth extends Controller {
         Await.result(RedisServiceImpl.save_user( Identity(IdentityId(user.login), user.name, user.avatar_url)), 5 seconds) //ugh
         Redirect(routes.AppController.index).withSession("login" -> user.login)
       }
-    } getOrElse Redirect(GITHUB.signIn)
+    } getOrElse Redirect(GITHUB.logIn)
   }
  
   protected def params[T](key: String)(implicit request: Request[T]) = request.queryString.get(key).flatMap(_.headOption)

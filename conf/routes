@@ -13,6 +13,6 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
 
 #login flow
-GET /signin  						controllers.Auth.signin
-GET /signout  						controllers.Auth.signout
+GET /login  						controllers.Auth.login
+GET /logout  						controllers.Auth.logout
 GET /callback  						controllers.Auth.callback

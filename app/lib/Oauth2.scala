@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 case class OAuth2Settings(
   clientId: String,
   clientSecret: String,
-  signInUrl: String,
+  logInUrl: String,
   accessTokenUrl: String,
   userInfoUrl: String
 )
@@ -17,7 +17,7 @@ abstract class OAuth2[T](settings: OAuth2Settings){
   def user(body: String): T
  
   import settings._
-  lazy val signIn = signInUrl + "?client_id=" + clientId
+  lazy val logIn = logInUrl + "?client_id=" + clientId
  
   def requestAccessToken(code: String): Option[String] = {
     val req = WS.url(accessTokenUrl +

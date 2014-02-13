@@ -1,0 +1,26 @@
+@()
+
+@layout("Clockwork Semaphore") {
+    <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
+        </div>
+    </nav>
+
+
+    <a href="login">login with github!<i class="fa fa-github fa-6"></i></a>
+
+
+
+   <script>
+        //dynamic navbar offset
+        $(window).resize(function () {
+           $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
+        });
+
+        $(window).load(function () {
+           $('body').css('padding-top', parseInt($('#main-navbar').css("height"))+10);
+        });
+   </script>
+
+}

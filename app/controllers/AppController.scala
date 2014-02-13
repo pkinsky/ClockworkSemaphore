@@ -33,7 +33,12 @@ object AppController extends Controller {
 
   def get_user_id(req: RequestHeader) = req.session.get("login")
 
-  object Authenticated extends AuthenticatedBuilder(req => get_user_id(req))
+  object Authenticated extends AuthenticatedBuilder(
+    userinfo= req => get_user_id(req),
+    onUnauthorized = requestHeader => Ok(views.html.app.login())
+  )
+
+
 
 
   implicit val timeout = Timeout(2 second)
@@ -63,9 +68,9 @@ object AppController extends Controller {
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
 
-        val userIdOpt = get_user_id(requestHeader)
+      val userIdOpt = get_user_id(requestHeader)
 		
-		userIdOpt.map(IdentityId(_)).map{ userId =>
+		  userIdOpt.map(IdentityId(_)).map{ userId =>
 
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
