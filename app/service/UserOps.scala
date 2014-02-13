@@ -34,12 +34,12 @@ trait UserOps extends RedisSchema with RedisConfig{
   }
 
   def remove_favorite_post(user_id: IdentityId, post_id: String): Future[Unit] = {
-    redis.sRem(user_favorites(user_id), post_id).map( _ => () ) //return Unit? different if not a favorite?
+    redis.sRem(user_favorites(user_id), post_id).map( _ => () ) //return Unit? fail if not a favorite?
   }
 
 
   def add_favorite_post(user_id: IdentityId, post_id: String): Future[Unit] = {
-    redis.sAdd(user_favorites(user_id), post_id).map( _ => () ) //return Unit? different if already a favorite?
+    redis.sAdd(user_favorites(user_id), post_id).map( _ => () ) //return Unit? fail if already a favorite?
   }
 
   def save_user(user: Identity): Future[Unit] = {

@@ -26,10 +26,9 @@ object Auth extends Controller {
         (json \ "avatar_url").as[String],
         (json \ "name").as[String]
 		  )
-      println(s"woot got github user $r")
+      println(s"woot got github user $r from string $body")
 
       r
-
 	}
 	}
  

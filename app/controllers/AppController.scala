@@ -39,12 +39,11 @@ object AppController extends Controller {
   )
 
 
-
-
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
 
+  //issue: no error handling for auth'd session cookie for session that has been
   def index = Authenticated  {
     implicit request => {
       val user_id = IdentityId(request.user)
@@ -67,14 +66,9 @@ object AppController extends Controller {
    */
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
-
-      val userIdOpt = get_user_id(requestHeader)
-		
-		  userIdOpt.map(IdentityId(_)).map{ userId =>
-
+      get_user_id(requestHeader).map(IdentityId(_)).map{ userId =>
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
-
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
                   socketActor ! MakePost(userId, Msg(System.currentTimeMillis, userId, msg))
@@ -109,7 +103,6 @@ object AppController extends Controller {
           }.mapDone {
                 _ => socketActor ! SocketClosed(userId)
           }
-
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
           }
 	}.getOrElse(errorFuture)
