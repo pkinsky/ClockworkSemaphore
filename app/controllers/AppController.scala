@@ -58,6 +58,7 @@ object AppController extends Controller {
     }
   }
 
+  def logout() = Action { Redirect(routes.AppController.index).withSession() }
 
   /**
    * This function creates a WebSocket using the

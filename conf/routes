@@ -13,6 +13,10 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
 
 #login flow
-GET /login  						controllers.Auth.login
-GET /logout  						controllers.Auth.logout
-GET /callback  						controllers.Auth.callback
+GET /logout  							controllers.AppController.logout
+
+GET /github/login  						controllers.Github.login
+GET /github/callback  					controllers.Github.callback
+
+GET /google/login  						controllers.Google.login
+GET /google/callback  					controllers.Google.callback
