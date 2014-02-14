@@ -6,32 +6,25 @@ import lib._
 import play.api.mvc._
 import play.api.libs.json.{JsValue, Json, JsResult}
 import service.{IdentityIdConverters, IdentityId, Identity, RedisServiceImpl}
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 
 import IdentityIdConverters._
-import play.api.libs.ws.WS
+import play.api.libs.ws.{Response, WS}
 import play.core.parsers.FormUrlEncodedParser
 import play.api.libs.ws.WS.WSRequestHolder
 import java.net.URLEncoder
 
 
 trait Authenticator extends Controller {
-
-  val extra_params: Map[String, String] = Map.empty
-
-  val extra_login_params: Map[String, String] = Map.empty
-
   val oauth_settings: OAuth2Settings
 
   def parse_user(body: String): Identity
 
-
-  //so lazy
-  def login_params = Map("client_id" -> oauth_settings.clientId) ++ extra_login_params
-
   def login_url = oauth_settings.logInUrl
 
-  def login() = Action { Redirect(login_url, login_params.mapValues(Seq(_))) }
+  def login(): Action[AnyContent] = Action { redirect }
+
+  def redirect: SimpleResult
 
 
   def callback() = Action { implicit request =>
@@ -45,27 +38,24 @@ trait Authenticator extends Controller {
         Await.result(RedisServiceImpl.save_user(user), 5 seconds) //ugh
         Redirect(routes.AppController.index).withSession("login" -> user.user_id.asString)
       }
-    } getOrElse Redirect(login_url, login_params.mapValues(Seq(_)))
+    } getOrElse redirect
   }
 
   protected def params[Identity](key: String)(implicit request: Request[Identity]) = request.queryString.get(key).flatMap(_.headOption)
 
 
+  def token_future(code: String): Future[Response]
+
+
   def requestAccessToken(code: String): Option[String] = {
     //def because I don't feel like dealing with lazy vals right now
-    def params_map = Map("client_id" -> oauth_settings.clientId,
-      "client_secret" -> oauth_settings.clientSecret,
-      "code" -> code) ++ extra_params
 
 
-
-    val req =  params_map.toSeq.foldLeft(WS.url(oauth_settings.accessTokenUrl))((a, b) => a.withQueryString(b))
-
-    val resp =  Await.result(req.post(""), 5 seconds) //ugh
+    val resp =  Await.result(token_future(code), 5 seconds) //ugh
 
 
     val r = FormUrlEncodedParser.parse(resp.body).get("access_token").flatMap(_.headOption)
-    println(s"got access token $r from body ${resp.body} using $req")
+    println(s"got access token $r from body ${resp.body}")
     r
   }
 
@@ -87,12 +77,12 @@ trait Authenticator extends Controller {
 
 
 object Google extends Authenticator {
-  override val extra_params =
-    Map("redirect_uri" -> "http://localhost:9000/google/callback", "grant_type" -> "authorization_code")
+  val login_params =
+    Map("client_id" -> oauth_settings.clientId,
+        "redirect_uri" -> "http://localhost:9000/google/callback",
+        "scope" -> "profile",
+        "response_type" -> "code")
 
-
-  override val extra_login_params =
-    Map("redirect_uri" -> "http://localhost:9000/google/callback", "scope" -> "profile", "response_type" -> "code")
 
   val oauth_settings = OAuth2Settings(
     "459927666173-qn7fmhamv8kpn9jbdchmebg0sosemvvo.apps.googleusercontent.com",
@@ -112,6 +102,29 @@ object Google extends Authenticator {
     )
   }
 
+
+
+  def token_future(code: String) = {
+    def params_map = Map("client_id" -> oauth_settings.clientId,
+      "client_secret" -> oauth_settings.clientSecret,
+      "code" -> code,
+      "redirect_uri" -> "http://localhost:9000/google/callback",
+      "grant_type" -> "authorization_code")
+
+
+    val req =  params_map.toSeq
+      .foldLeft(WS.url(oauth_settings.accessTokenUrl))((a, b) => a.withQueryString(b))
+      .withHeaders( ("Content-Type", "application/x-www-form-urlencoded") )
+
+    req.post("")
+  }
+
+
+  def redirect  = Redirect(login_url, login_params.mapValues(Seq(_)))
+
+
+
+
 }
 
 
@@ -124,7 +137,6 @@ object Google extends Authenticator {
 
 
 object Github extends Authenticator {
-
   val oauth_settings =
     OAuth2Settings(
       "cc1041161512ab0f5d5b",
@@ -133,6 +145,13 @@ object Github extends Authenticator {
       "https://github.com/login/oauth/access_token",
       "https://api.github.com/user"
     )
+
+  val login_params =
+    Map("client_id" -> oauth_settings.clientId,
+      "redirect_uri" -> "http://localhost:9000/google/callback"
+    )
+
+  def redirect  = Redirect(login_url, login_params.mapValues(Seq(_)))
 
 
   def parse_user(body: String) = {
@@ -144,5 +163,20 @@ object Github extends Authenticator {
 		  )
       r
 	}
+
+
+
+  def token_future(code: String) = {
+    def params_map = Map("client_id" -> oauth_settings.clientId,
+      "client_secret" -> oauth_settings.clientSecret,
+      "code" -> code
+    )
+
+
+    val req =  params_map.toSeq
+      .foldLeft(WS.url(oauth_settings.accessTokenUrl))((a, b) => a.withQueryString(b))
+
+    req.get
+  }
 
 }
