@@ -1,14 +1,13 @@
 package service
 
-import securesocial.core.IdentityId
 
 //https://stackoverflow.com/questions/16895635/convert-scala-2-10-future-to-scalaz-concurrent-future-task
 object IdentityIdConverters {
 
-  def idToString(id: IdentityId): String = s"${id.providerId}:${id.userId}"
+  def idToString(id: IdentityId): String = s"${id.user_id}"
 
-  def stringToId(id: String): IdentityId = id.split(":") match {
-    case Array(user_id, provider_id) => IdentityId(provider_id, user_id)
+  def stringToId(id: String): IdentityId = id match {
+    case s => IdentityId(s) //keeping error handling infrastructure around for later
     case _ => throw new IllegalArgumentException(s"could not parse user id $id")
   }
 

@@ -14,14 +14,12 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
-import service.{RedisServiceImpl, RedisUserService, RedisService}
+import service.{RedisServiceImpl, RedisService}
 
-
-import securesocial.core._
+import service.IdentityId
 
 
 import service.IdentityIdConverters._
-import securesocial.core.IdentityId
 import scala.util.Failure
 import play.api.libs.json.JsString
 import scala.Some

@@ -21,23 +21,32 @@ import actors.SocketClosed
 import play.api.Routes
 import scala.util.{ Success, Failure }
 import play.api.libs.concurrent.Execution.Implicits._
-import securesocial.core.SecureSocial
 import akka.event.slf4j.Logger
 import service._
 
 import IdentityIdConverters._
+import play.api.mvc.Security.AuthenticatedBuilder
 
 
-object AppController extends Controller with SecureSocial {
-  lazy val log = Logger("application." + this.getClass.getName)
+object AppController extends Controller {
+  lazy val log = Logger(s"application.${this.getClass.getName}")
+
+  def get_user_id(req: RequestHeader) = req.session.get("login")
+
+  object Authenticated extends AuthenticatedBuilder(
+    userinfo= req => get_user_id(req),
+    onUnauthorized = requestHeader => Ok(views.html.app.login())
+  )
+
 
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
 
-  def index = SecuredAction  {
+  //issue: no error handling for auth'd session cookie for session that has been
+  def index = Authenticated  {
     implicit request => {
-      val user_id = SecureSocial.currentUser.get.identityId
+      val user_id = IdentityId(request.user)
 
       val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
 
@@ -49,6 +58,7 @@ object AppController extends Controller with SecureSocial {
     }
   }
 
+  def logout() = Action { Redirect(routes.AppController.index).withSession() }
 
   /**
    * This function creates a WebSocket using the
@@ -57,14 +67,9 @@ object AppController extends Controller with SecureSocial {
    */
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
-
-      SecureSocial.currentUser.map{u =>
-
-        val userId = u.identityId
-
+      get_user_id(requestHeader).map(IdentityId(_)).map{ userId =>
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
-
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
                   socketActor ! MakePost(userId, Msg(System.currentTimeMillis, userId, msg))
@@ -99,13 +104,12 @@ object AppController extends Controller with SecureSocial {
           }.mapDone {
                 _ => socketActor ! SocketClosed(userId)
           }
-
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
           }
-      }.getOrElse(errorFuture)
+	}.getOrElse(errorFuture)
   }
 
-  def javascriptRoutes = SecuredAction {
+  def javascriptRoutes = Action {
     implicit request =>
       Ok(
         Routes.javascriptRouter("jsRoutes")(

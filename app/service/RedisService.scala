@@ -1,6 +1,5 @@
 package service
 
-import securesocial.core.{Identity, IdentityId}
 import actors.{MsgInfo, Msg, PublicIdentity}
 import scala.concurrent.Future
 
