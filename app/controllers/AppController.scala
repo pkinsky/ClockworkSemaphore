@@ -10,7 +10,7 @@ import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import actors._
 import akka.actor.Props
@@ -20,7 +20,6 @@ import actors.StartSocket
 import actors.SocketClosed
 import play.api.Routes
 import scala.util.{ Success, Failure }
-import play.api.libs.concurrent.Execution.Implicits._
 import akka.event.slf4j.Logger
 import service._
 
@@ -48,13 +47,14 @@ object AppController extends Controller {
     implicit request => {
       val user_id = IdentityId(request.user)
 
-      val user =  Await.result(RedisServiceImpl.get_public_user(user_id, user_id), 1 second) //ugh
 
-      val user_json = user.asJson.toString()
+      val r = RedisServiceImpl.get_public_user(user_id, user_id).map{ p: PublicIdentity =>
+        Ok(views.html.app.index(user_id.asString, p.asJson.toString))
+      }
 
-      log.info(s"init json: $user_json")
+      Async(r)
 
-      Ok(views.html.app.index(user_id.asString, user_json))
+
     }
   }
 

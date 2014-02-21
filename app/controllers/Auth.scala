@@ -2,17 +2,17 @@ package controllers
 
 
 import scala.concurrent.duration._
-import lib._
 import play.api.mvc._
 import play.api.libs.json.{JsValue, Json, JsResult}
 import service.{IdentityIdConverters, IdentityId, Identity, RedisServiceImpl}
-import scala.concurrent.{Future, Await}
+import scala.concurrent.Future
 
 import IdentityIdConverters._
 import play.api.libs.ws.{Response, WS}
 import play.core.parsers.FormUrlEncodedParser
 import play.api.libs.ws.WS.WSRequestHolder
 import java.net.URLEncoder
+import play.api.libs.concurrent.Execution.Implicits._
 
 
 trait Authenticator extends Controller {
@@ -28,15 +28,14 @@ trait Authenticator extends Controller {
 
 
   def callback() = Action { implicit request =>
-    println("callback")
-    params("code").flatMap { code =>
-
-      println(s"callback with code $code")
-
-      authenticate(code) map { user =>
-        println(s"got access token & user_info")
-        Await.result(RedisServiceImpl.save_user(user), 5 seconds) //ugh
-        Redirect(routes.AppController.index).withSession("login" -> user.user_id.asString)
+    //println("callback")
+    params("code").map{ code =>
+      Async {
+        for {
+          user <- authenticate(code)
+          _ <- RedisServiceImpl.save_user(user)
+          resp: SimpleResult = Redirect(routes.AppController.index).withSession("login" -> user.user_id.asString)
+        } yield resp
       }
     } getOrElse redirect
   }
@@ -47,31 +46,27 @@ trait Authenticator extends Controller {
   def token_future(code: String): Future[Response]
 
 
-  def requestAccessToken(code: String): Option[String] = {
-    //def because I don't feel like dealing with lazy vals right now
-
-
-    val resp =  Await.result(token_future(code), 5 seconds) //ugh
-
-
-    val r = FormUrlEncodedParser.parse(resp.body).get("access_token").flatMap(_.headOption)
-    println(s"got access token $r from body ${resp.body}")
-    r
+  def requestAccessToken(code: String): Future[String] = {
+    token_future(code).map{ resp =>
+      val r = FormUrlEncodedParser.parse(resp.body).get("access_token").flatMap(_.headOption)
+      println(s"got access token $r from body ${resp.body}")
+      r.get
+    }
   }
 
-  def authenticate(code: String) = requestAccessToken(code).map(requestUserInfo)
+  def authenticate(code: String): Future[Identity] =
+    for{
+      access_token <- requestAccessToken(code)
+      user_info <- requestUserInfo(access_token)
+    } yield user_info
 
-  def requestUserInfo(accessToken: String): Identity = {
-    println("getting user info")
-    val req = WS.url(oauth_settings.userInfoUrl + "?access_token=" + accessToken)
+  def requestUserInfo(accessToken: String): Future[Identity] = {
+    //println("getting user info")
+    val req = WS.url(s"${oauth_settings.userInfoUrl}?access_token=$accessToken")
 
-    val resp =  Await.result(req.get, 5 seconds) //ugh
+    req.get.map{resp => parse_user(resp.body)}
+    //println(s"got user_info: ${resp.body} => $r")
 
-    val r = parse_user(resp.body)
-
-    println(s"got user_info: ${resp.body} => $r")
-
-    r
   }
 }
 
@@ -120,7 +115,7 @@ object Google extends Authenticator {
   }
 
 
-  def redirect  = Redirect(login_url, login_params.mapValues(Seq(_)))
+  def redirect = Redirect(login_url, login_params.mapValues(Seq(_)))
 
 
 
@@ -180,3 +175,11 @@ object Github extends Authenticator {
   }
 
 }
+
+case class OAuth2Settings(
+                           clientId: String,
+                           clientSecret: String,
+                           logInUrl: String,
+                           accessTokenUrl: String,
+                           userInfoUrl: String
+                           )
