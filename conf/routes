@@ -17,6 +17,3 @@ GET /logout  							controllers.AppController.logout
 
 GET /github/login  						controllers.Github.login
 GET /github/callback  					controllers.Github.callback
-
-GET /google/login  						controllers.Google.login
-GET /google/callback  					controllers.Google.callback
