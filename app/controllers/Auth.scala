@@ -55,7 +55,7 @@ trait Authenticator extends Controller {
 
     req.get.map{ resp =>
       val r = FormUrlEncodedParser.parse(resp.body).get("access_token").flatMap(_.headOption)
-      println(s"got access token $r from body ${resp.body}")
+      //println(s"got access token $r from body ${resp.body}")
       r.get
     }
   }
@@ -97,23 +97,13 @@ object Github extends Authenticator {
 
   def parse_user(body: String) = {
 		  val json: JsValue = Json.parse(body)
-		  val r = Identity(
+		  Identity(
         IdentityId((json \ "login").as[String]),
         (json \ "email").as[String],
         (json \ "avatar_url").as[String]
 		  )
-      r
 	}
-
-
-
-
 }
 
-case class OAuth2Settings(
-                           clientId: String,
-                           clientSecret: String,
-                           logInUrl: String,
-                           accessTokenUrl: String,
-                           userInfoUrl: String
-                           )
+case class OAuth2Settings(clientId: String, clientSecret: String, logInUrl: String,
+                          accessTokenUrl: String, userInfoUrl: String)

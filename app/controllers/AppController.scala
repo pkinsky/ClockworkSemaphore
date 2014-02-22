@@ -53,8 +53,6 @@ object AppController extends Controller {
       }
 
       Async(r)
-
-
     }
   }
 
