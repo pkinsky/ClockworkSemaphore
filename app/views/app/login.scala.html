@@ -8,9 +8,25 @@
     </nav>
 
 
-    <a href="github/login">login with github!<i class="fa fa-github fa-6"></i></a>
+   <!--
+   form for username and password. use js to validate data, then send to server as a standard post. post results in login ( :) ) or redirect to this page + error ( :( )
+   todo: add default-nothing error field to this page
+   -->
 
-    <a href="google/login">login with google!<i class="fa fa-google fa-6"></i></a>
+    login
+    <form action="login" method="post">
+        Username: <input type="text" name="username"><br>
+        Password: <input type="password" name="password">
+        <input type="submit" value="Submit">
+    </form>
+
+
+        Register
+    <form action="register" method="post">
+        Username: <input type="text" name="username"><br>
+        Password: <input type="password" name="password">
+        <input type="submit" value="Submit">
+    </form>
 
 
    <script>

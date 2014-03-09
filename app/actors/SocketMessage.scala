@@ -1,12 +1,10 @@
 package actors
 
 import play.api.libs.json._
-import service.IdentityIdConverters._
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
 import play.api.libs.json.JsNumber
 
-import service.IdentityId
 
 sealed trait JsonMessage{
   def asJson: JsValue
@@ -19,7 +17,7 @@ object Msg {
     def writes(msg: Msg): JsValue = {
       JsObject(Seq(
         ("timestamp", JsNumber(msg.timestamp)),
-        ("user_id", JsString(idToString(msg.user_id))),
+        ("user_id", JsString(msg.uid)),
         ("body", JsString(msg.body))
       ))
     }
@@ -27,7 +25,7 @@ object Msg {
     def reads(json: JsValue): JsResult[Msg] =
       for{
         timeStamp <- Json.fromJson[Long](json \ "timestamp")
-        identityId <- Json.fromJson[String](json \ "user_id").map(stringToId(_))
+        identityId <- Json.fromJson[String](json \ "user_id")
         msg <- Json.fromJson[String](json \ "body")
       } yield Msg(timeStamp,identityId, msg)
 
@@ -40,8 +38,7 @@ object AckRequestAlias {
 }
 
 object PublicIdentity {
-  implicit val format1 = Json.format[IdentityId]
-  implicit val format2 = Json.format[PublicIdentity]}
+  implicit val format = Json.format[PublicIdentity]}
 
 
 object MsgInfo{
@@ -56,7 +53,7 @@ object Update {
 case class MsgInfo(post_id: String, favorite: Boolean, msg: Msg)
 
 //todo: case class representing message + isFavorite and post_id for sending to client
-case class Msg(timestamp: Long, user_id: IdentityId, body: String) extends JsonMessage with SocketMessage{
+case class Msg(timestamp: Long, uid: String, body: String) extends JsonMessage with SocketMessage{
   def asJson = Json.toJson(this)
 }
 
@@ -88,28 +85,28 @@ case class Update(msg: List[MsgInfo]=Nil,
 sealed trait SocketMessage
 
 
-case class MakePost(from: IdentityId, msg: Msg)
+case class MakePost(author_uid: String, msg: Msg)
 
-case class PushPost(to: IdentityId, msg: MsgInfo)
+case class PushPost(requesting_uid: String, msg: MsgInfo)
 
-case class RequestPost(to: IdentityId, post_id: String)
+case class RequestPost(requesting_uid: String, post_id: String)
 
-case class RecentPosts(user_id: IdentityId)
+case class RecentPosts(uid: String)
 
 case object Register extends SocketMessage
 
-case class StartSocket(user_id: IdentityId) extends SocketMessage
+case class StartSocket(uid: String) extends SocketMessage
 
-case class SocketClosed(user_id: IdentityId) extends SocketMessage
+case class SocketClosed(uid: String) extends SocketMessage
 
-case class RequestAlias(user_id: IdentityId, alias: String) extends SocketMessage
+case class RequestAlias(uid: String, alias: String) extends SocketMessage
 
-case class RequestInfo(requester: IdentityId, user_id: IdentityId) extends SocketMessage
+case class RequestInfo(requesting_uid: String, user_id: String) extends SocketMessage
 
-case class DeleteMessage(userId: IdentityId, post_id: String)
+case class DeleteMessage(uid: String, post_id: String)
 
-case class FavoriteMessage(userId: IdentityId, post_id: String)
+case class FavoriteMessage(uid: String, post_id: String)
 
-case class UnFavoriteMessage(userId: IdentityId, post_id: String)
+case class UnFavoriteMessage(uid: String, post_id: String)
 
-case class SetAboutMe(userId: IdentityId, about_me: String)
+case class SetAboutMe(uid: String, about_me: String)

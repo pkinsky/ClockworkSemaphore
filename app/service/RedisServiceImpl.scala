@@ -22,8 +22,6 @@ import  scalaz._, std.option._, std.tuple._, syntax.bitraverse._
 import  Scalaz.ToIdOps
 
 
-import IdentityIdConverters._
-
 import actors.ApplicativeStuff._
 
 
@@ -33,7 +31,7 @@ import actors.ApplicativeStuff._
 
 object RedisServiceImpl extends RedisService with UserOps with RedisSchema with RedisConfig {
 
-  private def zipMsgInfo(post_ids: List[String], user_id: IdentityId): Future[List[MsgInfo]] =
+  private def zipMsgInfo(post_ids: List[String], user_id: String): Future[List[MsgInfo]] =
     for {
       favorites <- redis.sMembers(user_favorites(user_id))
       posts <-  Future.sequence(post_ids.map{post_id =>
@@ -46,14 +44,14 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
 
 
 
-  def recent_posts(user_id: IdentityId): Future[List[MsgInfo]] =
+  def recent_posts(user_id: String): Future[List[MsgInfo]] =
     for {
       timeline <- redis.lRange[String](global_timeline, 0, 50)
       msg_info <- zipMsgInfo(timeline, user_id)
     } yield msg_info
 
 
-  def load_msg_info(user_id: IdentityId, post_id: String): Future[Option[MsgInfo]] = {
+  def load_msg_info(user_id: String, post_id: String): Future[Option[MsgInfo]] = {
     for {
       favorites <- redis.sMembers(user_favorites(user_id))
       msgOpt <- load_post(post_id)
@@ -70,7 +68,7 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
         timestamp <- map.get("timestamp")
         author <- map.get("author")
         body <- map.get("body")
-      } yield Msg(parseLong(timestamp), author.asId, body)
+      } yield Msg(parseLong(timestamp), author, body)
     }
 
 
@@ -82,12 +80,12 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
   def save_post(post_id: String, msg: Msg): Future[Unit] =
     redis.hmSetFromMap(post_info(post_id), Map(
 				"timestamp" -> msg.timestamp,
-				"author" -> msg.user_id.asString,
+				"author" -> msg.uid,
 				"body" -> msg.body
     ))
 
 
-  def post(user_id: IdentityId, msg: Msg): Future[String] = {
+  def post(user_id: String, msg: Msg): Future[String] = {
 
     def trim_global = redis.lTrim(global_timeline,0,1000)
 
