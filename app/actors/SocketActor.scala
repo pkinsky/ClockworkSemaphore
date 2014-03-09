@@ -29,6 +29,7 @@ import ApplicativeStuff._
 import scalaz._
 
 
+
 class SocketActor extends Actor {
 
   val redisService: RedisService = RedisServiceImpl
@@ -150,6 +151,16 @@ class SocketActor extends Actor {
       log.info(s"$user_id unfavorite $post_id")
       redisService.remove_favorite_post(user_id, post_id)
     }
+
+
+    case UnFollowUser(uid, to_unfollow) =>
+      redisService.unfollow_user(uid, to_unfollow)
+        .onComplete( res => log.info(s"$uid unfollowed $to_unfollow: with result $res"))
+
+
+    case FollowUser(uid, to_follow) =>
+      redisService.follow_user(uid, to_follow)
+        .onComplete( res => log.info(s"$uid followed $to_follow: with result $res"))
 
 
     case DeleteMessage(userId, post_id) => {

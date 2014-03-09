@@ -23,7 +23,7 @@ import scala.util.{ Success, Failure }
 import akka.event.slf4j.Logger
 import service._
 
-import play.api.mvc.Security.AuthenticatedBuilder
+import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
 
 
 object AppController extends Controller {
@@ -34,8 +34,8 @@ object AppController extends Controller {
   def get_auth_string(req: RequestHeader) = req.session.get("login")
 
   //todo: custom Authenticator that can handle futures better :(
-  object Authenticated extends AuthenticatedBuilder(
-    userinfo= req => get_auth_string(req).map(redis_service.user_from_auth_string(_)),
+  object Authenticated extends FutureAuthenticatedBuilder(
+    userinfo= req => get_auth_string(req).map(redis_service.user_from_auth_string(_)).getOrElse(Future.failed(Stop("no auth string"))),
     onUnauthorized = requestHeader => Ok(views.html.app.login())
   )
 
@@ -47,7 +47,7 @@ object AppController extends Controller {
   def login2 = Action {
     implicit request =>
 
-      //fuck it, this is all getting rewritten later
+      //this is all getting rewritten later
       val forminfo = request.body.asFormUrlEncoded.get
 
       val username = forminfo("username").head
@@ -57,7 +57,10 @@ object AppController extends Controller {
       val r = for {
         uid <- redis_service.login_user(username, password)
         auth <- redis_service.gen_auth_string_for_user(uid)
-      } yield Redirect(routes.AppController.index).withSession( "login" -> auth)
+      } yield {
+        log.info(s"login $uid with $auth")
+        Redirect(routes.AppController.index).withSession( "login" -> auth)
+      }
 
       Async(r)
   }
@@ -72,7 +75,7 @@ object AppController extends Controller {
   def register = Action {
     implicit request =>
 
-      //fuck it, this is all getting rewritten later
+      //this is all getting rewritten later
       val forminfo = request.body.asFormUrlEncoded.get
 
       val username = forminfo("username").head
@@ -94,14 +97,12 @@ object AppController extends Controller {
   }
 
 
-  //issue: no error handling for auth'd session cookie for session that has been
   def index = Authenticated  {
     implicit request => {
-      val user_id_future = request.user
+      val user_id = request.user
 
 
       val r = for {
-        user_id <- user_id_future
         public_user <- RedisServiceImpl.get_public_user(user_id, user_id)
       } yield Ok(views.html.app.index(user_id, public_user.asJson.toString))
 
@@ -120,7 +121,12 @@ object AppController extends Controller {
    */
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
-      get_auth_string(requestHeader).map{ userId =>
+      val u = get_auth_string(requestHeader) match {
+        case Some(auth) => redis_service.user_from_auth_string(auth)
+        case None => Future.failed(Stop("no user for auth at websocket"))
+      }
+
+      u.flatMap{ userId =>
          (socketActor ? StartSocket(userId)) map {
             enumerator =>
               val it = Iteratee.foreach[JsValue]{
@@ -151,6 +157,12 @@ object AppController extends Controller {
                 case JsObject(Seq(("unfavorite_message", JsString(post_id)))) =>
                   socketActor ! UnFavoriteMessage(userId, post_id)
 
+                case JsObject(Seq(("follow_user", JsString(to_follow)))) =>
+                  socketActor ! FollowUser(userId, to_follow)
+
+                case JsObject(Seq(("unfollow_user", JsString(to_unfollow)))) =>
+                  socketActor ! UnFollowUser(userId, to_unfollow)
+
                 case js =>
                   log.error(s"  ???: received jsvalue $js")
 
@@ -159,7 +171,7 @@ object AppController extends Controller {
           }
               (it, enumerator.asInstanceOf[Enumerator[JsValue]])
           }
-	}.getOrElse(errorFuture)
+	  }
   }
 
   def javascriptRoutes = Action {
@@ -182,3 +194,46 @@ object AppController extends Controller {
   
   
 }
+
+
+
+
+
+
+
+class FutureAuthenticatedBuilder[U](userinfo: RequestHeader => Future[U],
+                              onUnauthorized: RequestHeader => SimpleResult)
+  extends ActionBuilder[({ type R[A] = AuthenticatedRequest[A, U] })#R] {
+
+  def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A, U]) => Future[SimpleResult]) =
+    authenticate(request, block)
+
+  /**
+   * Authenticate the given block.
+   */
+  def authenticate[A](request: Request[A], block: (AuthenticatedRequest[A, U]) => Future[SimpleResult]) = {
+    (for {
+      user <- userinfo(request)
+      r <- block(new AuthenticatedRequest(user, request))
+    } yield r).recover{
+      case _ => onUnauthorized(request)
+    }
+
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -110,3 +110,7 @@ case class FavoriteMessage(uid: String, post_id: String)
 case class UnFavoriteMessage(uid: String, post_id: String)
 
 case class SetAboutMe(uid: String, about_me: String)
+
+case class UnFollowUser(uid: String, to_unfollow: String)
+
+case class FollowUser(uid: String, to_unfollow: String)
