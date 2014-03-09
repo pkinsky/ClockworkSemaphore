@@ -28,7 +28,9 @@ ng-init="init( '@user_id', @user_json )">
         <!-- (left sidebar) -->
         <div class="panel panel-default" ng-if="focus=='user-posts'">
             <div class="panel-heading">
-                <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded">
+                <!-- <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded"> -->
+                <img ng-src="@routes.Assets.at("images/avatar.jpeg")" class="img-rounded img-responsive">
+
                 &nbsp
                 {{ get_user(focused_user).alias }}
             </div>
@@ -67,7 +69,9 @@ ng-init="init( '@user_id', @user_json )">
 
     <div class="panel panel-tweet" ng-repeat="message in get_messages()">
     <div class="panel-heading">
-        <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;">
+        <!-- <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;"> -->
+        <img ng-src="@routes.Assets.at("images/avatar.jpeg")" class="img-rounded img-responsive" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;">
+
         &nbsp
         {{ get_user(message.user_id).alias }}
     </div>

@@ -11,12 +11,31 @@ import scalaz.syntax.applicative.ToApplyOps
 
 import scredis.parsing.Parser
 
-
+case class Stop(s: String) extends Exception(s"stopping execution: $s")
 
 //what a user sees about themselves, what the system knows about a given user
 case class User(uid: String, username: String)
 
 trait UserOps extends RedisSchema with RedisConfig{
+
+
+  //ignore if already favorite
+  def follow_user(uid: String, to_follow:String): Future[Unit] = {
+    for {
+      _ <- redis.sAdd(following(to_follow), uid)
+      _ <- redis.sAdd(followers(uid), to_follow)
+    } yield ()
+  }
+
+  //ignore if not favorite already
+  def unfollow_user(uid: String, to_unfollow:String): Future[Unit] = {
+    for {
+       _ <- redis.sRem(following(to_unfollow), uid)
+       _ <- redis.sRem(followers(uid), to_unfollow)
+    } yield ()
+  }
+
+
 
   def load_favorite_posts(uid: String): Future[Set[String]] = {
     redis.sMembers[String](user_favorites(uid))
@@ -38,7 +57,7 @@ trait UserOps extends RedisSchema with RedisConfig{
       _ <- Future( log.info(s"login: $username yields $uid") )
       Some(actual_password) <- redis.get(user_password(uid))
       _ <- Future( log.info(s"login: $uid yields password $actual_password with entered password $password") )
-      if (actual_password == password)
+      _ <- if (actual_password == password) Future(()) else Future.failed(Stop(s"passwords '$actual_password' and '$password' not equal"))
     } yield uid
 
   //future of userid for new user or error if invalid somehow
@@ -68,7 +87,7 @@ trait UserOps extends RedisSchema with RedisConfig{
     for {
       Some(uid) <- redis.get(auth_user(auth))
       Some(user_auth) <- redis.get(user_auth(uid))
-      if user_auth == auth
+      _ <- if (user_auth != auth) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
     } yield uid
   }
 

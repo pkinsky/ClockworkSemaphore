@@ -35,4 +35,8 @@ trait RedisService {
     def get_about_me(user_id: String): Future[Option[String]]
 
     def load_msg_info(user_id: String, post_id: String): Future[Option[MsgInfo]]
-  }
+
+    def follow_user(uid: String, to_follow:String): Future[Unit]
+
+    def unfollow_user(uid: String, to_unfollow:String): Future[Unit]
+}
