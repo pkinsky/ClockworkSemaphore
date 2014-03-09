@@ -16,10 +16,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
 import service.{RedisServiceImpl, RedisService}
 
-import service.IdentityId
 
 
-import service.IdentityIdConverters._
 import scala.util.Failure
 import play.api.libs.json.JsString
 import scala.Some
@@ -36,33 +34,33 @@ class SocketActor extends Actor {
   val redisService: RedisService = RedisServiceImpl
 
 
-  case class UserChannel(user_id: IdentityId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
+  case class UserChannel(uid: String, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
   lazy val log = Logger("application." + this.getClass.getName)
 
 
   // this map relate every user with his or her UserChannel
-  var webSockets: Map[IdentityId, UserChannel] = Map.empty
+  var webSockets: Map[String, UserChannel] = Map.empty
 
 
-  def establishConnection(user_id: IdentityId): UserChannel = {
+  def establishConnection(uid: String): UserChannel = {
     //log.debug(s"establish socket connection for user $user_id")
 
-    val userChannel: UserChannel =  webSockets.get(user_id) getOrElse {
+    val userChannel: UserChannel =  webSockets.get(uid) getOrElse {
         val broadcast: (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
-        UserChannel(user_id, 0, broadcast._1, broadcast._2)
+        UserChannel(uid, 0, broadcast._1, broadcast._2)
 
       }
 
     userChannel.channelsCount = userChannel.channelsCount + 1
-    webSockets += (user_id -> userChannel)
+    webSockets += (uid -> userChannel)
 
     userChannel
   }
 
 
-  private def send(user_id: IdentityId)(update: Update): Unit =
-    webSockets(user_id).channel push update.asJson
+  private def send(uid: String)(update: Update): Unit =
+    webSockets(uid).channel push update.asJson
 
 
   override def receive = {
@@ -160,7 +158,7 @@ class SocketActor extends Actor {
 
       val delete = for {
           post <- redisService.load_post(post_id)
-          if !post.isEmpty && post.get.user_id == userId //check that user is deleting own post
+          if !post.isEmpty && post.get.uid == userId //check that user is deleting own post
           _ <- redisService.delete_post(post_id)
       } yield ()
 
@@ -184,8 +182,8 @@ class SocketActor extends Actor {
       }
   }
 
-  def removeUserChannel(user_id: IdentityId) = {
+  def removeUserChannel(uid: String) = {
     //log debug s"removed channel for $user_id"
-    webSockets -= user_id
+    webSockets -= uid
   }
 }
