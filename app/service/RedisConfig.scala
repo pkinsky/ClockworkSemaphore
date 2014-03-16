@@ -17,6 +17,8 @@ trait RedisConfig {
 
   private val redisUri = sys.env.get("REDISCLOUD_URL").map(new URI(_))
 
+  def flushall = redis.flushAll() //dooooom!
+
   protected val redis = redisUri match{
     case Some(u) => Redis(ConfigFactory.empty
       .withValue("client",

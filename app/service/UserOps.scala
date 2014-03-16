@@ -18,6 +18,9 @@ case class User(uid: String, username: String)
 
 trait UserOps extends RedisSchema with RedisConfig{
 
+  def predicate(condition: Boolean)(fail: Exception): Future[Unit] =
+    if (condition) Future( () ) else Future.failed(fail)
+
 
   def get_following(uid: String): Future[Set[String]] =
     for {
@@ -30,7 +33,7 @@ trait UserOps extends RedisSchema with RedisConfig{
     } yield followers
 
 
-  //ignore if already favorite
+  //ignore if already followed
   def follow_user(uid: String, to_follow:String): Future[Unit] = {
     for {
       _ <- redis.sAdd(user_following(to_follow), uid)
@@ -38,7 +41,7 @@ trait UserOps extends RedisSchema with RedisConfig{
     } yield ()
   }
 
-  //ignore if not favorite already
+  //ignore if not followed already
   def unfollow_user(uid: String, to_unfollow:String): Future[Unit] = {
     for {
        _ <- redis.sRem(user_following(to_unfollow), uid)
@@ -78,7 +81,7 @@ trait UserOps extends RedisSchema with RedisConfig{
       //will lead to orphan uuids if validation fails.
       // todo: check username first, then recheck and reserve
       username_not_taken <- establish_alias(uid, username)
-      if username_not_taken
+      _ <- predicate(username_not_taken)(Stop(s"username $username is taken"))
       _ <- redis.set(user_password(uid), password)
     } yield uid
   }
@@ -141,9 +144,10 @@ trait UserOps extends RedisSchema with RedisConfig{
     (get_user(uid) |@|
     get_alias(uid) |@|
     get_user_posts(uid) |@|
-    get_about_me(uid)){
-    (user, alias, posts, about_me) =>
-          PublicIdentity(user.uid, user.username, Some("default_url"), posts, about_me.getOrElse("click here to edit about me"))
+    get_about_me(uid) |@|
+    get_following(current_user)){
+    (user, alias, posts, about_me, following) =>
+          PublicIdentity(user.uid, user.username, Some("default_url"), posts, about_me.getOrElse("click here to edit about me"), following.contains(uid))
     }
 
   protected def get_user_posts(uid: String): Future[List[String]] =

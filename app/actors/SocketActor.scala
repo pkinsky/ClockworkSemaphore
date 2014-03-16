@@ -101,6 +101,7 @@ class SocketActor extends Actor {
         for {
           recipient <- recipients + from
         } yield {
+          log.info(s"push msg: $post_id to recipient $recipient")
           //push to each recipient
           val msg_info = MsgInfo(post_id, false, message)
           webSockets(recipient).channel push Update(

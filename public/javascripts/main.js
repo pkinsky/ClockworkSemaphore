@@ -118,8 +118,6 @@ function AppCtrl($scope, $http, ChatService) {
                   console.error("failed to get user info")
             });
 
-
-            ChatService.send( {user_id: user_id} );
         }
     }
   }
@@ -160,15 +158,10 @@ function AppCtrl($scope, $http, ChatService) {
                     console.error("failed to get post info" + status );
             });
 
-            ChatService.send( {post_id: post_id} );
         }
     }
   }
 
-
-  $scope.is_followed = function(focused_user) {
-    true;
-  }
 
   $scope.focused_user = null;
 
@@ -299,8 +292,29 @@ function AppCtrl($scope, $http, ChatService) {
   }
 
 
+  $scope.unfollow_user = function(user_id) {
+        console.log("unfollow user " + user_id);
+        $http({ method: 'GET', url: '/user/unfollow/' + user_id }).
+            success(function(data, status, headers, config) {
+                  console.log("unfollowed user " + user_id + ", " + JSON.stringify(data));
+                  $scope.get_user(user_id).following = false;
+            }).
+            error(function(data, status, headers, config) {
+                  console.log("failed to unfollow user " + user_id + ", " + status);
+        });
+  }
+
+
   $scope.follow_user = function(user_id) {
         console.log("follow user " + user_id);
+        $http({ method: 'GET', url: '/user/follow/' + user_id }).
+            success(function(data, status, headers, config) {
+                  console.log("followed user " + user_id + ", " + JSON.stringify(data));
+                   $scope.get_user(user_id).following = true;
+            }).
+            error(function(data, status, headers, config) {
+                  console.log("failed to follow user " + user_id + ", " + status);
+        });
   }
 
 
