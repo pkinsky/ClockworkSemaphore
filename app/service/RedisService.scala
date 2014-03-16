@@ -39,4 +39,8 @@ trait RedisService {
     def follow_user(uid: String, to_follow:String): Future[Unit]
 
     def unfollow_user(uid: String, to_unfollow:String): Future[Unit]
+
+    def get_following(uid: String): Future[Set[String]]
+
+    def get_followers(uid: String): Future[Set[String]]
 }

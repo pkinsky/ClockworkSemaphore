@@ -26,6 +26,22 @@ import service._
 import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
 
 
+//todo:
+/*
+  def predicate(if: Boolean)(fail: Exception) returns future with exception if predicate not satisfied
+
+  for flow control without shitty syntax
+
+   use
+   for {
+    _ <- predicate 1 == 2
+   }
+
+ */
+
+
+
+
 object AppController extends Controller {
   lazy val log = Logger(s"application.${this.getClass.getName}")
 
@@ -33,12 +49,15 @@ object AppController extends Controller {
 
   def get_auth_string(req: RequestHeader) = req.session.get("login")
 
-  //todo: custom Authenticator that can handle futures better :(
   object Authenticated extends FutureAuthenticatedBuilder(
     userinfo= req => get_auth_string(req).map(redis_service.user_from_auth_string(_)).getOrElse(Future.failed(Stop("no auth string"))),
     onUnauthorized = requestHeader => Ok(views.html.app.login())
   )
 
+  object AuthenticatedAPI extends FutureAuthenticatedBuilder(
+    userinfo= req => get_auth_string(req).map(redis_service.user_from_auth_string(_)).getOrElse(Future.failed(Stop("no auth string"))),
+    onUnauthorized = requestHeader => Unauthorized
+  )
 
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
@@ -67,9 +86,7 @@ object AppController extends Controller {
 
 
   def login = Action {
-
     Ok( views.html.app.login() )
-
   }
 
   def register = Action {
@@ -89,12 +106,106 @@ object AppController extends Controller {
         Redirect(routes.AppController.index).withSession("login" -> auth)
       }
 
+      Async(r)
+  }
+
+  def follow(to_follow: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+
+      val r = for {
+        _ <- redis_service.follow_user(user_id, to_follow)
+      } yield Ok("pass ???")
 
       Async(r)
-
-      //todo: copy logic from twitter redis example
-
+    }
   }
+
+  def unfollow(to_unfollow: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+
+      val r = for {
+        _ <- redis_service.unfollow_user(user_id, to_unfollow)
+      } yield Ok("pass ???")
+
+      Async(r)
+    }
+  }
+
+  def user_info(uid: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+
+      val r = for {
+        public_identity <- redis_service.get_public_user(user_id, uid)
+      } yield Ok( public_identity.asJson.toString )
+
+      Async(r)
+    }
+  }
+
+
+  def favorite(post_id: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+
+      val r = for {
+        public_identity <- redis_service.add_favorite_post(user_id, post_id)
+      } yield Ok( "Pass ???" )
+
+      Async(r)
+    }
+  }
+
+  def unfavorite(post_id: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+
+      val r = for {
+        public_identity <- redis_service.remove_favorite_post(user_id, post_id)
+      } yield Ok( "Pass ???" )
+
+      Async(r)
+    }
+  }
+
+  def delete_post(post_id: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+      log.info(s"delete message $post_id")
+
+      val delete = for {
+        post <- redis_service.load_post(post_id)
+        if !post.isEmpty && post.get.uid == user_id //check that user is deleting own post
+        _ <- redis_service.delete_post(post_id)
+      } yield Ok( "Pass ???" )
+
+
+      Async(delete)
+    }
+  }
+
+  //return option, some kind of parsable json 'nothing to see here...'
+  def post_info(post_id: String) = AuthenticatedAPI  {
+    implicit request => {
+      val user_id = request.user
+
+      log.info(s"getting post info for $post_id")
+
+      val r = for {
+        msg_info_opt <- redis_service.load_msg_info(user_id, post_id)
+      } yield msg_info_opt match {
+          case Some(msg_info) =>
+            log.info(s"msg info for $post_id => $msg_info")
+            Ok( msg_info.asJson.toString )
+          case None => NoContent
+        }
+
+      Async(r)
+    }
+  }
+
 
 
   def index = Authenticated  {
@@ -136,35 +247,13 @@ object AppController extends Controller {
                 case JsString("recent_posts") =>
                   socketActor ! RecentPosts(userId)
 
-                case JsObject(Seq(("user_id", JsString(id)))) =>
-                  socketActor ! RequestInfo(userId, id)
-
                 case JsObject(Seq(("alias", JsString(alias)))) =>
                   socketActor ! RequestAlias(userId, alias)
 
                 case JsObject(Seq(("about_me", JsString(about_me)))) =>
                   socketActor ! SetAboutMe(userId, about_me)
 
-                case JsObject(Seq(("post_id", JsString(post_id)))) =>
-                  socketActor ! RequestPost(userId, post_id)
-
-                case JsObject(Seq(("delete_message", JsString(post_id)))) =>
-                  socketActor ! DeleteMessage(userId, post_id)
-
-                case JsObject(Seq(("favorite_message", JsString(post_id)))) =>
-                  socketActor ! FavoriteMessage(userId, post_id)
-
-                case JsObject(Seq(("unfavorite_message", JsString(post_id)))) =>
-                  socketActor ! UnFavoriteMessage(userId, post_id)
-
-                case JsObject(Seq(("follow_user", JsString(to_follow)))) =>
-                  socketActor ! FollowUser(userId, to_follow)
-
-                case JsObject(Seq(("unfollow_user", JsString(to_unfollow)))) =>
-                  socketActor ! UnFollowUser(userId, to_unfollow)
-
-                case js =>
-                  log.error(s"  ???: received jsvalue $js")
+                case js => log.error(s"  ???: received jsvalue $js")
 
           }.mapDone {
                 _ => socketActor ! SocketClosed(userId)

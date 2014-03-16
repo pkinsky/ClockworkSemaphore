@@ -19,19 +19,30 @@ case class User(uid: String, username: String)
 trait UserOps extends RedisSchema with RedisConfig{
 
 
+  def get_following(uid: String): Future[Set[String]] =
+    for {
+      following <- redis.sMembers(user_following(uid))
+    } yield following
+
+  def get_followers(uid: String): Future[Set[String]] =
+    for {
+      followers <- redis.sMembers(user_followers(uid))
+    } yield followers
+
+
   //ignore if already favorite
   def follow_user(uid: String, to_follow:String): Future[Unit] = {
     for {
-      _ <- redis.sAdd(following(to_follow), uid)
-      _ <- redis.sAdd(followers(uid), to_follow)
+      _ <- redis.sAdd(user_following(to_follow), uid)
+      _ <- redis.sAdd(user_followers(uid), to_follow)
     } yield ()
   }
 
   //ignore if not favorite already
   def unfollow_user(uid: String, to_unfollow:String): Future[Unit] = {
     for {
-       _ <- redis.sRem(following(to_unfollow), uid)
-       _ <- redis.sRem(followers(uid), to_unfollow)
+       _ <- redis.sRem(user_following(to_unfollow), uid)
+       _ <- redis.sRem(user_followers(uid), to_unfollow)
     } yield ()
   }
 
@@ -74,7 +85,7 @@ trait UserOps extends RedisSchema with RedisConfig{
 
   //todo: generate an actual random string, unset previous string
   def gen_auth_string_for_user(uid: String): Future[String] = {
-    val auth = "todo: random"
+    val auth = new scala.util.Random().nextString(15)
     for {
       _ <- redis.set(user_auth(uid), auth)
       _ <- redis.set(auth_user(auth), uid)

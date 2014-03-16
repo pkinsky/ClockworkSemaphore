@@ -36,33 +36,27 @@ ng-init="init( '@user_id', @user_json )">
             </div>
             <div class="panel-body">
 
+
+             <!-- fix this! -->
+            <a ng-click="follow_user(focused_user)" ng-if="focus!='front-page'" ng-show="focused_user!=current_user">
+                <i class="fa fa-star-o fa-6" ng-if="is_followed(focused_user)"  title="follow user"></i>
+                <i class="fa fa-star fa-6" ng-if="!is_followed(focused_user)" title="unfollow user"></i>
+            </a>
+
+
             <a class="preserve-whitespace" editable-textarea="get_user(focused_user).about_me"
                ng-if="current_user==focused_user" onaftersave="update_about_me()">{{ get_user(focused_user).about_me }}</a>
 
             <a class="preserve-whitespace" ng-if="current_user!=focused_user">{{ get_user(focused_user).about_me }}</a>
-            <!-- credit: a markov chain fed the works of william gibson care of loremgibson.com
-            Likes:
-                <ul>Post-ironic hashtag vinyl</ul>
-                <ul>Papier-mache computers</ul>
-                <ul>Sub-orbital wonton soup</ul>
-            Dislikes
-                <ul>Whatever swag</ul>
-                <ul>Math-cartel marketing</ul>
-            -->
-
             </div>
         </div>
     </div>
 
     <div class="col-lg-6 col-md-6 col-sm-6" id="tweet_column">
-    <form class="form-inline" ng-submit="send()" ng-if="signup_complete()">
+    <form class="form-inline" ng-submit="send()" ng-show="focus=='front-page' || focused_user==current_user">
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
         <input type="submit" class="form-control" />
-    </form>
-
-    <form class="form-inline" ng-submit="set_alias()" ng-if="!signup_complete()" >
-        <input type="text" placeholder="pick a pseudonym" class="form-control" id="alias">
     </form>
 
     <br>
