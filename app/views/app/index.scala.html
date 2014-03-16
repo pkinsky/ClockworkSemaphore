@@ -38,9 +38,9 @@ ng-init="init( '@user_id', @user_json )">
 
 
              <!-- fix this! -->
-            <a ng-click="follow_user(focused_user)" ng-if="focus!='front-page'" ng-show="focused_user!=current_user">
-                <i class="fa fa-star-o fa-6" ng-if="is_followed(focused_user)"  title="follow user"></i>
-                <i class="fa fa-star fa-6" ng-if="!is_followed(focused_user)" title="unfollow user"></i>
+            <a ng-if="focus!='front-page'" ng-show="focused_user!=current_user">
+                <i class="fa fa-star-o fa-6" ng-click="unfollow_user(focused_user)" ng-if="get_user(focused_user).following"  title="follow user"></i>
+                <i class="fa fa-star fa-6" ng-click="follow_user(focused_user)" ng-if="!get_user(focused_user).following" title="unfollow user"></i>
             </a>
 
 

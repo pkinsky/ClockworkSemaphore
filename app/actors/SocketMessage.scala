@@ -56,7 +56,8 @@ case class Msg(timestamp: Long, uid: String, body: String) extends JsonMessage w
 }
 
 //user specific, following: is the current user following this dude?
-case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String], recent_posts: List[String], about_me: String) extends JsonMessage {
+case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String],
+                          recent_posts: List[String], about_me: String, following: Boolean) extends JsonMessage {
   def asJson = Json.toJson(this)
 }
 
