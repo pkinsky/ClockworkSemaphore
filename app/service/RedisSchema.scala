@@ -6,9 +6,9 @@ package service
 trait RedisSchema {
 
   //users following uid
-  protected def followers(uid: String) = "uid:$uid:followers"
+  protected def user_followers(uid: String) = "uid:$uid:followers"
   //users followed by uid
-  protected def following(uid: String) = "uid:$uid:following"
+  protected def user_following(uid: String) = "uid:$uid:following"
   //set of posts favorited by user identified by user_id
   protected def user_favorites(uid: String) = s"uid:$uid:favorites"
 

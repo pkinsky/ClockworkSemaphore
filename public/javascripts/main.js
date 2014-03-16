@@ -35,7 +35,10 @@ function StringSet() {
 }
 
 
-var app = angular.module('app', ["xeditable"]);
+var app = angular.module('app', ["xeditable"]).
+        config(function ($httpProvider) {
+                   $httpProvider.defaults.withCredentials = true;
+                });
 
 app.run(function(editableOptions) {
   editableOptions.theme = 'bs3'; // bootstrap3 theme. Can be also 'bs2', 'default'
@@ -84,7 +87,7 @@ app.factory('ChatService', function() {
 });
 
 
-function AppCtrl($scope, ChatService) {
+function AppCtrl($scope, $http, ChatService) {
   ChatService.connect();
 
   //map of user_id => object describing public components of user
@@ -106,6 +109,16 @@ function AppCtrl($scope, ChatService) {
             return null;
         } else {
             fetching_users.add(user_id);
+            $http({ method: 'GET', url: '/user/info/' + user_id }).
+                success(function(data, status, headers, config) {
+                  console.log("got user info, " + JSON.stringify(data))
+                  push_user_info(data);
+                }).
+                error(function(data, status, headers, config) {
+                  console.error("failed to get user info")
+            });
+
+
             ChatService.send( {user_id: user_id} );
         }
     }
@@ -133,17 +146,35 @@ function AppCtrl($scope, ChatService) {
             return null;
         } else {
             fetching_messages.add(post_id);
+
+            $http({ method: 'GET', url: '/post/info/' + post_id }).
+                success(function(data, status, headers, config) {
+                  if (status = 204) {
+                      console.info("api call success, post info not found" );
+                  } else {
+                      console.log("got post info, " + JSON.stringify(data));
+                      push_user_info(data);
+                  }
+                }).
+                error(function(data, status, headers, config) {
+                    console.error("failed to get post info" + status );
+            });
+
             ChatService.send( {post_id: post_id} );
         }
     }
   }
 
 
+  $scope.is_followed = function(focused_user) {
+    true;
+  }
+
   $scope.focused_user = null;
 
   $scope.focus_on_user = function (focus_user) {
     console.log("focus on user " + focus_user);
-    ChatService.send( {user_id:focus_user} );
+    ChatService.send( {user_id:focus_user} ); //???
 
     $scope.focus = "user-posts";
     $scope.focused_user = focus_user;
@@ -159,9 +190,6 @@ function AppCtrl($scope, ChatService) {
   //init to null (binding in init)
   $scope.current_user = null;
 
-  $scope.signup_complete = function () {
-    return users[$scope.current_user].alias.length != 0;
-  }
 
   //array of post-id's
   $scope.recent_messages = new StringSet();
@@ -193,33 +221,12 @@ function AppCtrl($scope, ChatService) {
     return m.reverse();
   }
 
-  $scope.set_alias = function() {
-    var alias_in = $("#alias").val();
-    console.log("setting alias: " + alias_in);
-
-    //show error text. perhaps add error text, make red after first fail
-    if (alias_in.length > 32){
-    $('#alias').transition({
-            rotate: '+=10deg',
-            x: '+=3'
-        }).transition({
-            rotate: '-=15deg',
-            x: '-=5'
-        }).transition({
-            rotate: '+=10deg',
-            x: '+=3'
-        }).transition({
-            rotate: '-=5deg',
-            x: '-=1'
-        });
-        //alert("oh noes too long");
-    }else{
-        ChatService.send( {user_id:$scope.user_id, alias:alias_in} );
-    }
-  };
 
 
   push_user_info = function(user_info) {
+
+        console.log( JSON.stringify(user_info) )
+
         var recent_posts = new StringSet();
         user_info.recent_posts.forEach( function(post_id){
                 recent_posts.add(post_id);
@@ -251,7 +258,16 @@ function AppCtrl($scope, ChatService) {
 
   $scope.delete_message = function(message) {
     console.log("delete message");
-    ChatService.send( {delete_message:message.post_id} );
+    var post_id = message.post_id;
+    //ChatService.send( {delete_message:message.post_id} );
+    $http({ method: 'GET', url: '/post/delete/' + post_id }).
+        success(function(data, status, headers, config) {
+          console.log("deleted post, " + JSON.stringify(data))
+          delete messages[post_id];
+        }).
+        error(function(data, status, headers, config) {
+          console.error("failed to get post info")
+    });
   }
 
   $scope.favorite_message = function(message) {
@@ -259,15 +275,32 @@ function AppCtrl($scope, ChatService) {
 
     var post_id = message.post_id;
 
-    if (message.favorite) {
-        message.favorite = false;
-        if (!$scope.$$phase) $scope.$apply();
-        ChatService.send( {unfavorite_message:message.post_id} );
+    if (!message.favorite) {
+        //if (!$scope.$$phase) $scope.$apply(); //???
+        $http({ method: 'GET', url: '/post/favorite/' + post_id }).
+            success(function(data, status, headers, config) {
+              console.log("favorite post, " + JSON.stringify(data))
+              message.favorite = true;
+            }).
+            error(function(data, status, headers, config) {
+              console.error("failed to favorite post")
+        });
+
     }else{
-        message.favorite = true;
-        if (!$scope.$$phase) $scope.$apply();
-        ChatService.send( {favorite_message:message.post_id} );
+        $http({ method: 'GET', url: '/post/unfavorite/' + post_id }).
+            success(function(data, status, headers, config) {
+              console.log("unfavorite post, " + JSON.stringify(data))
+              message.favorite = false;
+            }).
+            error(function(data, status, headers, config) {
+              console.error("failed to unfavorite post")
+        });
     }
+  }
+
+
+  $scope.follow_user = function(user_id) {
+        console.log("follow user " + user_id);
   }
 
 
@@ -305,13 +338,6 @@ function AppCtrl($scope, ChatService) {
                 push_user_info(user_info);
             }
 
-            if ('alias_result' in actual){
-                if (actual['alias_result']['pass']){
-                    users[$scope.current_user].alias = actual['alias_result']['alias'];
-                } else {
-                    alert("alias taken: " +  actual['alias_result']['alias']);
-                }
-            }
 
             actual.deleted.forEach(function(post_id){
                 //console.log("handling delete: " + post_id);
