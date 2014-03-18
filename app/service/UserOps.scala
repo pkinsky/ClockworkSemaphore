@@ -24,28 +24,28 @@ trait UserOps extends RedisSchema with RedisConfig{
 
   def get_following(uid: String): Future[Set[String]] =
     for {
-      following <- redis.sMembers(user_following(uid))
+      following <- redis.sMembers(followed_by(uid))
     } yield following
 
   def get_followers(uid: String): Future[Set[String]] =
     for {
-      followers <- redis.sMembers(user_followers(uid))
+      followers <- redis.sMembers(followers_of(uid))
     } yield followers
 
 
   //ignore if already followed
   def follow_user(uid: String, to_follow:String): Future[Unit] = {
     for {
-      _ <- redis.sAdd(user_following(to_follow), uid)
-      _ <- redis.sAdd(user_followers(uid), to_follow)
+      _ <- redis.sAdd(followed_by(uid), to_follow)
+      _ <- redis.sAdd(followers_of(to_follow), uid)
     } yield ()
   }
 
   //ignore if not followed already
   def unfollow_user(uid: String, to_unfollow:String): Future[Unit] = {
     for {
-       _ <- redis.sRem(user_following(to_unfollow), uid)
-       _ <- redis.sRem(user_followers(uid), to_unfollow)
+       _ <- redis.sRem(followed_by(uid), to_unfollow)
+       _ <- redis.sRem(followers_of(to_unfollow), uid)
     } yield ()
   }
 
@@ -150,7 +150,7 @@ trait UserOps extends RedisSchema with RedisConfig{
           PublicIdentity(user.uid, user.username, Some("default_url"), posts, about_me.getOrElse("click here to edit about me"), following.contains(uid))
     }
 
-  protected def get_user_posts(uid: String): Future[List[String]] =
+  def get_user_posts(uid: String): Future[List[String]] =
     redis.lRange[String](user_posts(uid), 0, 50)
 
 }
