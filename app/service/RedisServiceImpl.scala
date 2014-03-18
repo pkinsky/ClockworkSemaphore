@@ -85,6 +85,16 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
     ))
 
 
+  def distribute_post(from: String, post_id: String): Future[Unit] =
+    for {
+      recipients <- get_followers(from)
+      distribution = for (recipient <- recipients + from) yield {
+        println(s"push post with id $post_id to $recipient")
+        redis.lPush(user_posts(recipient), post_id)
+      }
+      _ <- Future.sequence(distribution)
+    } yield ()
+
   def post(user_id: String, msg: Msg): Future[String] = {
 
     def trim_global = redis.lTrim(global_timeline,0,1000)
@@ -92,8 +102,8 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
     def handle_post(post_id: String) =
       (redis.lPush(global_timeline,post_id)
         |@| save_post(post_id, msg)
-        |@| redis.lPush(user_posts(user_id), post_id)
-        ){ (a,b,c) => log.info("done handling post!"); () }
+        |@| distribute_post(user_id, post_id)
+      ){ (a,b,c) => log.info("done handling post!"); () }
 
 
     for {
