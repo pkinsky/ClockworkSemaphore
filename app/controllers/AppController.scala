@@ -45,17 +45,19 @@ import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
 object AppController extends Controller {
   lazy val log = Logger(s"application.${this.getClass.getName}")
 
-  val redis_service = RedisServiceImpl
+  val redis_service = RedisServiceImpl.asInstanceOf[RedisService]
 
-  def get_auth_string(req: RequestHeader) = req.session.get("login")
+  def get_auth_token(req: RequestHeader) = req.session.get("login").map(AuthToken(_))
+
+  def authenticate(req: RequestHeader) = get_auth_token(req).map(redis_service.user_from_auth_token(_)).getOrElse(Future.failed(Stop("no auth string")))
 
   object Authenticated extends FutureAuthenticatedBuilder(
-    userinfo= req => get_auth_string(req).map(redis_service.user_from_auth_string(_)).getOrElse(Future.failed(Stop("no auth string"))),
+    userinfo= authenticate,
     onUnauthorized = requestHeader => Ok(views.html.app.login())
   )
 
   object AuthenticatedAPI extends FutureAuthenticatedBuilder(
-    userinfo= req => get_auth_string(req).map(redis_service.user_from_auth_string(_)).getOrElse(Future.failed(Stop("no auth string"))),
+    userinfo= authenticate,
     onUnauthorized = requestHeader => Unauthorized
   )
 
@@ -75,10 +77,10 @@ object AppController extends Controller {
 
       val r = for {
         uid <- redis_service.login_user(username, password)
-        auth <- redis_service.gen_auth_string_for_user(uid)
+        auth <- redis_service.gen_auth_token(uid)
       } yield {
         log.info(s"login $uid with $auth")
-        Redirect(routes.AppController.index).withSession( "login" -> auth)
+        Redirect(routes.AppController.index).withSession( "login" -> auth.token)
       }
 
       Async(r)
@@ -100,10 +102,10 @@ object AppController extends Controller {
 
       val r = for {
         uid <- redis_service.register_user(username, password)
-        auth <- redis_service.gen_auth_string_for_user(uid)
+        auth <- redis_service.gen_auth_token(uid)
       } yield {
         log.info(s"register: $username / $password results in user $uid with auth string $auth")
-        Redirect(routes.AppController.index).withSession("login" -> auth)
+        Redirect(routes.AppController.index).withSession("login" -> auth.token)
       }
 
       Async(r)
@@ -114,7 +116,7 @@ object AppController extends Controller {
       val user_id = request.user
 
       val r = for {
-        _ <- redis_service.follow_user(user_id, to_follow)
+        _ <- redis_service.follow_user(user_id, UserId(to_follow))
       } yield Ok("pass ???")
 
       Async(r)
@@ -126,100 +128,19 @@ object AppController extends Controller {
       val user_id = request.user
 
       val r = for {
-        _ <- redis_service.unfollow_user(user_id, to_unfollow)
+        _ <- redis_service.unfollow_user(user_id, UserId(to_unfollow))
       } yield Ok("pass ???")
 
       Async(r)
     }
   }
 
-  def user_info(uid: String) = AuthenticatedAPI  {
-    implicit request => {
-      val user_id = request.user
-
-      val r = for {
-        public_identity <- redis_service.get_public_user(user_id, uid)
-      } yield Ok( public_identity.asJson.toString )
-
-      Async(r)
-    }
-  }
-
-
-  def favorite(post_id: String) = AuthenticatedAPI  {
-    implicit request => {
-      val user_id = request.user
-
-      val r = for {
-        public_identity <- redis_service.add_favorite_post(user_id, post_id)
-      } yield Ok( "Pass ???" )
-
-      Async(r)
-    }
-  }
-
-  def unfavorite(post_id: String) = AuthenticatedAPI  {
-    implicit request => {
-      val user_id = request.user
-
-      val r = for {
-        public_identity <- redis_service.remove_favorite_post(user_id, post_id)
-      } yield Ok( "Pass ???" )
-
-      Async(r)
-    }
-  }
-
-  def delete_post(post_id: String) = AuthenticatedAPI  {
-    implicit request => {
-      val user_id = request.user
-      log.info(s"delete message $post_id")
-
-      val delete = for {
-        post <- redis_service.load_post(post_id)
-        if !post.isEmpty && post.get.uid == user_id //check that user is deleting own post
-        _ <- redis_service.delete_post(post_id)
-      } yield Ok( "Pass ???" )
-
-
-      Async(delete)
-    }
-  }
-
-  //return option, some kind of parsable json 'nothing to see here...'
-  def post_info(post_id: String) = AuthenticatedAPI  {
-    implicit request => {
-      val user_id = request.user
-
-      log.info(s"getting post info for $post_id")
-
-      val r = for {
-        msg_info_opt <- redis_service.load_msg_info(user_id, post_id)
-      } yield msg_info_opt match {
-          case Some(msg_info) =>
-            log.info(s"msg info for $post_id => $msg_info")
-            Ok( msg_info.asJson.toString )
-          case None => NoContent
-        }
-
-      Async(r)
-    }
-  }
-
-
 
   def index = Authenticated  {
     implicit request => {
       val user_id = request.user
 
-
-      val r = for {
-        public_user <- RedisServiceImpl.get_public_user(user_id, user_id)
-      } yield Ok(views.html.app.index(user_id, public_user.asJson.toString))
-
-
-
-      Async(r)
+      Ok(views.html.app.index(user_id.uid))
     }
   }
 
@@ -232,8 +153,8 @@ object AppController extends Controller {
    */
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
-      val u = get_auth_string(requestHeader) match {
-        case Some(auth) => redis_service.user_from_auth_string(auth)
+      val u = get_auth_token(requestHeader) match {
+        case Some(auth) => redis_service.user_from_auth_token(auth)
         case None => Future.failed(Stop("no user for auth at websocket"))
       }
 
@@ -243,15 +164,6 @@ object AppController extends Controller {
               val it = Iteratee.foreach[JsValue]{
                 case JsObject(Seq((("msg", JsString(msg))))) =>
                   socketActor ! MakePost(userId, Msg(System.currentTimeMillis, userId, msg))
-
-                case JsString("recent_posts") =>
-                  socketActor ! RecentPosts(userId)
-
-                case JsObject(Seq(("alias", JsString(alias)))) =>
-                  socketActor ! RequestAlias(userId, alias)
-
-                case JsObject(Seq(("about_me", JsString(about_me)))) =>
-                  socketActor ! SetAboutMe(userId, about_me)
 
                 case js => log.error(s"  ???: received jsvalue $js")
 

@@ -1,8 +1,8 @@
-@(user_id: String, user_json: String)
+@(user_id: String)
 
 @layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl" ng-app="app"
-ng-init="init( '@user_id', @user_json )">
+ng-init="init('@user_id')">
 
     <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
     <!-- Collect the nav links, forms, and other content for toggling -->

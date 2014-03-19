@@ -4,7 +4,7 @@ import play.api.libs.json._
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
 import play.api.libs.json.JsNumber
-
+import service.{UserId, PostId}
 
 sealed trait JsonMessage{
   def asJson: JsValue
@@ -17,7 +17,7 @@ object Msg {
     def writes(msg: Msg): JsValue = {
       JsObject(Seq(
         ("timestamp", JsNumber(msg.timestamp)),
-        ("user_id", JsString(msg.uid)),
+        ("user_id", JsString(msg.uid.uid)),
         ("body", JsString(msg.body))
       ))
     }
@@ -25,68 +25,43 @@ object Msg {
     def reads(json: JsValue): JsResult[Msg] =
       for{
         timeStamp <- Json.fromJson[Long](json \ "timestamp")
-        identityId <- Json.fromJson[String](json \ "user_id")
+        uid <- Json.fromJson[String](json \ "user_id")
         msg <- Json.fromJson[String](json \ "body")
-      } yield Msg(timeStamp,identityId, msg)
+      } yield Msg(timeStamp, UserId(uid), msg)
   }
 
 }
 
 
-object PublicIdentity {
-  implicit val format = Json.format[PublicIdentity]}
+//todo: case class representing message + isFavorite and post_id for sending to client
+case class Msg(timestamp: Long, uid: UserId, body: String) extends JsonMessage with SocketMessage{
+  def asJson = Json.toJson(this)
+}
 
 
-object MsgInfo{
+object MsgInfo {
   implicit val format = Json.format[MsgInfo]
 }
 
-object Update {
-  implicit val format = Json.format[Update]
-}
 
-
-case class MsgInfo(post_id: String, favorite: Boolean, msg: Msg) extends JsonMessage {
+//pid is post id, but using string to avoid need for custom serializer
+case class MsgInfo(pid: String, msg: Msg) extends JsonMessage{
   def asJson = Json.toJson(this)
 }
-
-//todo: case class representing message + isFavorite and post_id for sending to client
-case class Msg(timestamp: Long, uid: String, body: String) extends JsonMessage with SocketMessage{
-  def asJson = Json.toJson(this)
-}
-
-//user specific, following: is the current user following this dude?
-case class PublicIdentity(user_id: String, alias: String, avatar_url: Option[String],
-                          recent_posts: List[String], about_me: String, following: Boolean) extends JsonMessage {
-  def asJson = Json.toJson(this)
-}
-
-
-case class Update(msg: List[MsgInfo]=Nil,
-                  user_info: Option[PublicIdentity]=None,
-                  deleted: Set[String] = Set.empty,
-                  recent_messages: List[String]=Nil,
-                  followed_messages: List[String]=Nil) extends JsonMessage {
-
-  def asJson = Json.toJson(this)
-}
-
-
-
-
 
 
 sealed trait SocketMessage
 
+case class SendMessage(user_id: UserId, msg: MsgInfo)
 
-case class MakePost(author_uid: String, msg: Msg)
+case class MakePost(author_uid: UserId, msg: Msg)
 
-case class RecentPosts(uid: String)
+case class RecentPosts(uid: UserId)
 
-case class StartSocket(uid: String) extends SocketMessage
+case class StartSocket(uid: UserId) extends SocketMessage
 
-case class SocketClosed(uid: String) extends SocketMessage
+case class SocketClosed(uid: UserId) extends SocketMessage
 
-case class RequestAlias(uid: String, alias: String) extends SocketMessage
+case class RequestAlias(uid: UserId, alias: String) extends SocketMessage
 
-case class SetAboutMe(uid: String, about_me: String)
+case class SetAboutMe(uid: UserId, about_me: String)

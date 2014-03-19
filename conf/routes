@@ -17,13 +17,7 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 #user-level operations
 GET /user/follow/:uid                   controllers.AppController.follow(uid: String)
 GET /user/unfollow/:uid                 controllers.AppController.unfollow(uid: String)
-GET /user/info/:uid                     controllers.AppController.user_info(uid: String)
 
-#post-level operations
-GET /post/favorite/:post_id             controllers.AppController.favorite(post_id: String)
-GET /post/unfavorite/:post_id           controllers.AppController.unfavorite(post_id: String)
-GET /post/delete/:post_id               controllers.AppController.delete_post(post_id: String)
-GET /post/info/:post_id                 controllers.AppController.post_info(post_id: String)
 
 
 
