@@ -39,7 +39,7 @@ trait RedisService {
     def register_user(username: String, password: String): Future[UserId]
 
     // given a user id, fetch the corresponding user
-    def get_user(user_id: UserId): Future[User]
+    def get_user_name(user_id: UserId): Future[String]
 
     // given a user id and a message, save that message and distribute it to all followers of sender
     def post_message(sender: UserId, msg: Msg): Future[PostId]
