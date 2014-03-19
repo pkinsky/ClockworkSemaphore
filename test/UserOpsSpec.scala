@@ -116,7 +116,7 @@ object StringSpecification extends PlaySpecification {
         follower_uid <- redis_service.register_user("user1", "pwd")
         following_uid <- redis_service.register_user("user2", "pwd")
         _ <- redis_service.follow_user(follower_uid, following_uid)
-        post_id <- redis_service.post(following_uid, Msg(System.currentTimeMillis, following_uid, "test post"))
+        post_id <- redis_service.post_message(following_uid, Msg(System.currentTimeMillis, following_uid, "test post"))
         following <- redis_service.get_following(follower_uid)
         followers <- redis_service.get_followers(following_uid)
         follower_posts <- redis_service.get_user_posts(follower_uid)

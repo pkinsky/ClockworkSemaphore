@@ -2,7 +2,6 @@ package service
 
 import scala.concurrent.Future
 import scalaz.Applicative
-import actors.PublicIdentity
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
@@ -22,15 +21,16 @@ trait UserOps extends RedisSchema with RedisConfig{
     if (condition) Future( () ) else Future.failed(fail)
 
 
-  def get_following(uid: String): Future[Set[String]] =
+  def get_following(uid: UserId): Future[Set[UserId]] =
     for {
-      following <- redis.sMembers(followed_by(uid))
-    } yield following
+      following <- redis.sMembers(followed_by(uid.uid))
+    } yield following.map( id => UserId(id) )
 
-  def get_followers(uid: String): Future[Set[String]] =
+  def get_followers(uid: UserId): Future[Set[UserId]] =
     for {
-      followers <- redis.sMembers(followers_of(uid))
-    } yield followers
+      followers <- redis.sMembers(followers_of(uid.uid))
+    } yield followers.map( id => UserId(id) )
+
 
 
   //ignore if already followed
@@ -65,17 +65,17 @@ trait UserOps extends RedisSchema with RedisConfig{
   }
 
   //returns user id if successful. note: distinction between wrong password and nonexistent username? nah, maybe later
-  def login_user(username: String, password: String): Future[String] =
+  def login_user(username: String, password: String): Future[UserId] =
     for {
       Some(uid) <- redis.get(username_to_id(username))
       _ <- Future( log.info(s"login: $username yields $uid") )
       Some(actual_password) <- redis.get(user_password(uid))
       _ <- Future( log.info(s"login: $uid yields password $actual_password with entered password $password") )
       _ <- if (actual_password == password) Future(()) else Future.failed(Stop(s"passwords '$actual_password' and '$password' not equal"))
-    } yield uid
+    } yield UserId(uid)
 
   //future of userid for new user or error if invalid somehow
-  def register_user(username: String, password: String): Future[String] = {
+  def register_user(username: String, password: String): Future[UserId] = {
     for {
       uid <- redis.incr(next_user_id).map(_.toString)
       //will lead to orphan uuids if validation fails.
@@ -83,7 +83,7 @@ trait UserOps extends RedisSchema with RedisConfig{
       username_not_taken <- establish_alias(uid, username)
       _ <- predicate(username_not_taken)(Stop(s"username $username is taken"))
       _ <- redis.set(user_password(uid), password)
-    } yield uid
+    } yield UserId(uid)
   }
 
   //todo: generate an actual random string, unset previous string
@@ -140,17 +140,8 @@ trait UserOps extends RedisSchema with RedisConfig{
     } yield User(uid, username)
 
 
-  def get_public_user(current_user: String, uid: String): Future[PublicIdentity] =
-    (get_user(uid) |@|
-    get_alias(uid) |@|
-    get_user_posts(uid) |@|
-    get_about_me(uid) |@|
-    get_following(current_user)){
-    (user, alias, posts, about_me, following) =>
-          PublicIdentity(user.uid, user.username, Some("default_url"), posts, about_me.getOrElse("click here to edit about me"), following.contains(uid))
-    }
-
+/*
   def get_user_posts(uid: String): Future[List[String]] =
     redis.lRange[String](user_posts(uid), 0, 50)
-
+*/
 }

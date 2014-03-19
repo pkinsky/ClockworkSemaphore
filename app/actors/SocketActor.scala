@@ -14,7 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
-import service.{RedisServiceImpl, RedisService}
+import service.{UserId, PostId, RedisServiceImpl, RedisService}
 
 
 
@@ -35,16 +35,16 @@ class SocketActor extends Actor {
   val redisService: RedisService = RedisServiceImpl
 
 
-  case class UserChannel(uid: String, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
+  case class UserChannel(uid: UserId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
   lazy val log = Logger("application." + this.getClass.getName)
 
 
   // this map relate every user with his or her UserChannel
-  var webSockets: Map[String, UserChannel] = Map.empty
+  var webSockets: Map[UserId, UserChannel] = Map.empty
 
 
-  def establishConnection(uid: String): UserChannel = {
+  def establishConnection(uid: UserId): UserChannel = {
     //log.debug(s"establish socket connection for user $user_id")
 
     val userChannel: UserChannel =  webSockets.get(uid) getOrElse {
@@ -60,8 +60,8 @@ class SocketActor extends Actor {
   }
 
 
-  private def send(uid: String)(update: Update): Unit =
-    webSockets(uid).channel push update.asJson
+  private def send(uid: UserId)(msgs: Seq[MsgInfo]): Unit =
+    for (msg <- msgs) webSockets(uid).channel push msg.asJson
 
 
   override def receive = {
@@ -70,46 +70,17 @@ class SocketActor extends Actor {
         sender ! userChannel.enumerator
     }
 
-    case RecentPosts(user_id) => {
-      redisService.recent_posts(user_id).onComplete{
-        case Success(messages) =>
-            send(user_id)(Update(
-              msg = messages,
-              recent_messages = messages.map( msgInfo => msgInfo.post_id )
-            ))
-        case Failure(t) => log.error(s"recent posts fail: ${t}");
-      }
+    case SendMessage(user_id, msg) => {
+        send(user_id)(msg :: Nil)
     }
-
-	
-    case SetAboutMe(user_id, about_me) => {
-        log.info(s"set about me for $user_id to $about_me")
-        redisService.set_about_me(user_id, about_me).onComplete{
-          case Failure(t) => log.error(s"set about me fail: $t")
-          case Success(_) => ()
-        }
-      }
 
     case MakePost(from, message) => {
       log.info(s"$from pushing msg: $message" )
 
       val r = for {
-        post_id <- redisService.post(from, message)
-        recipients <- redisService.get_followers(from)
+        post_id <- redisService.post_message(from, message)
       } yield {
-
-        for {
-          recipient <- recipients + from
-        } yield {
-          log.info(s"push msg: $post_id to recipient $recipient")
-          //push to each recipient
-          val msg_info = MsgInfo(post_id, false, message)
-          webSockets(recipient).channel push Update(
-            msg = msg_info :: Nil,
-            recent_messages = post_id :: Nil
-          ).asJson
-        }
-
+	() //don't serialize here. use redis pubsub to handle pushing msg to recipients
       }
 
       r.onComplete{
@@ -132,7 +103,7 @@ class SocketActor extends Actor {
       }
   }
 
-  def removeUserChannel(uid: String) = {
+  def removeUserChannel(uid: UserId) = {
     //log debug s"removed channel for $user_id"
     webSockets -= uid
   }

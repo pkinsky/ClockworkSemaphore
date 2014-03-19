@@ -31,32 +31,31 @@ import actors.ApplicativeStuff._
 
 object RedisServiceImpl extends RedisService with UserOps with RedisSchema with RedisConfig {
 
-  private def zipMsgInfo(post_ids: List[String], user_id: String): Future[List[MsgInfo]] =
+  private def zipMsgInfo(post_ids: List[String], user_id: UserId): Future[List[MsgInfo]] =
     for {
-      favorites <- redis.sMembers(user_favorites(user_id))
       posts <-  Future.sequence(post_ids.map{post_id =>
         load_post(post_id).map(r =>
           r.map{
-            MsgInfo(post_id, favorites.contains(post_id), _)
+            MsgInfo(post_id, _)
           })
       })
     } yield posts.collect{ case Some(msg) => msg }.toList
 
 
 
-  def recent_posts(user_id: String): Future[List[MsgInfo]] =
+  def recent_posts(user_id: UserId): Future[List[MsgInfo]] =
     for {
       timeline <- redis.lRange[String](global_timeline, 0, 50)
       msg_info <- zipMsgInfo(timeline, user_id)
     } yield msg_info
 
 
-  def load_msg_info(user_id: String, post_id: String): Future[Option[MsgInfo]] = {
+  def load_msg_info(user_id: UserId, post_id: String): Future[Option[MsgInfo]] = {
     for {
-      favorites <- redis.sMembers(user_favorites(user_id))
+      favorites <- redis.sMembers(user_favorites(user_id.uid))
       msgOpt <- load_post(post_id)
     } yield msgOpt.map{
-        msg => MsgInfo(post_id, favorites.contains(post_id), msg)
+        msg => MsgInfo(post_id, msg)
       }
   }
 
@@ -68,7 +67,7 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
         timestamp <- map.get("timestamp")
         author <- map.get("author")
         body <- map.get("body")
-      } yield Msg(parseLong(timestamp), author, body)
+      } yield Msg(parseLong(timestamp), UserId(author), body)
     }
 
 
@@ -77,29 +76,29 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
   }
 
 
-  def save_post(post_id: String, msg: Msg): Future[Unit] =
-    redis.hmSetFromMap(post_info(post_id), Map(
+  def save_post(post_id: PostId, msg: Msg): Future[Unit] =
+    redis.hmSetFromMap(post_info(post_id.pid), Map(
 				"timestamp" -> msg.timestamp,
 				"author" -> msg.uid,
 				"body" -> msg.body
     ))
 
 
-  def distribute_post(from: String, post_id: String): Future[Unit] =
+  def distribute_post(from: UserId, post_id: PostId): Future[Unit] =
     for {
       recipients <- get_followers(from)
       distribution = for (recipient <- recipients + from) yield {
         println(s"push post with id $post_id to $recipient")
-        redis.lPush(user_posts(recipient), post_id)
+        redis.lPush(user_posts(recipient.uid), post_id)
       }
       _ <- Future.sequence(distribution)
     } yield ()
 
-  def post(user_id: String, msg: Msg): Future[String] = {
+  def post_message(user_id: UserId, msg: Msg): Future[PostId] = {
 
     def trim_global = redis.lTrim(global_timeline,0,1000)
 
-    def handle_post(post_id: String) =
+    def handle_post(post_id: PostId) =
       (redis.lPush(global_timeline,post_id)
         |@| save_post(post_id, msg)
         |@| distribute_post(user_id, post_id)
@@ -107,7 +106,7 @@ object RedisServiceImpl extends RedisService with UserOps with RedisSchema with 
 
 
     for {
-      post_id <- redis.incr(next_post_id).map(_.toString)
+      post_id <- redis.incr(next_post_id).map(id => PostId(id.toString))
       _ <- handle_post(post_id)
       _ <- trim_global
     } yield post_id
