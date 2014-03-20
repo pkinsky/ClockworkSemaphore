@@ -60,8 +60,7 @@ app.factory('ChatService', function() {
     var ws = new ReconnectingWebSocket(ws_url("websocket/"));
 
     ws.onopen = function() {
-        console.log("ack websocket");
-        service.ws.send(JSON.stringify("recent_posts"));
+        console.log("ack websocket"); //(send ack message? later, could help avoid initializing too many websockets)
     };
 
     ws.onerror = function() {
@@ -91,206 +90,17 @@ function AppCtrl($scope, $http, ChatService) {
   ChatService.connect();
 
   //map of user_id => object describing public components of user
-  $scope.init = function (current_user, user_info) {
+  $scope.init = function (current_user, username) {
     $scope.current_user = current_user;
-
-    push_user_info(user_info);
+    $scope.users[current_user] = username;
   }
 
+  $scope.users = {};
 
-  var users = {};
-  var fetching_users = new StringSet();
-
-  $scope.get_user = function(user_id) {
-    if (users.hasOwnProperty(user_id)){
-        return users[user_id];
-    } else {
-        if (fetching_users.contains(user_id)) {
-            return null;
-        } else {
-            fetching_users.add(user_id);
-            $http({ method: 'GET', url: '/user/info/' + user_id }).
-                success(function(data, status, headers, config) {
-                  console.log("got user info, " + JSON.stringify(data))
-                  push_user_info(data);
-                }).
-                error(function(data, status, headers, config) {
-                  console.error("failed to get user info")
-            });
-
-        }
-    }
-  }
-
-  $scope.update_about_me = function() {
-      var about_me = $scope.get_user($scope.current_user).about_me;
-      console.log("update about me to " + about_me);
-      ChatService.send( { about_me: about_me } );
-  };
-
-
-
-  var messages = {};
-  var fetching_messages = new StringSet();
-
-  $scope.get_message = function(post_id) {
-
-    //console.log("get_message: " + post_id + " from messages: " + JSON.stringify(messages));
-
-    if (messages.hasOwnProperty(post_id)){
-        return messages[post_id];
-    } else {
-        if (fetching_messages.contains(post_id)) {
-            return null;
-        } else {
-            fetching_messages.add(post_id);
-
-            $http({ method: 'GET', url: '/post/info/' + post_id }).
-                success(function(data, status, headers, config) {
-                  if (status = 204) {
-                      console.info("api call success, post info not found" );
-                  } else {
-                      console.log("got post info, " + JSON.stringify(data));
-                      push_user_info(data);
-                  }
-                }).
-                error(function(data, status, headers, config) {
-                    console.error("failed to get post info" + status );
-            });
-
-        }
-    }
-  }
-
-
-  $scope.focused_user = null;
-
-  $scope.focus_on_user = function (focus_user) {
-    console.log("focus on user " + focus_user);
-    ChatService.send( {user_id:focus_user} ); //???
-
-    $scope.focus = "user-posts";
-    $scope.focused_user = focus_user;
-  }
-
-  // 'up one level' actually just up to top-level
-  $scope.up_one_level = function () {
-    $scope.focus = "front-page";
-  }
-
-  $scope.focus = "front-page";
+  $scope.messages = {};
 
   //init to null (binding in init)
   $scope.current_user = null;
-
-
-  //array of post-id's
-  $scope.recent_messages = new StringSet();
-
-
-  $scope.get_messages = function() {
-    if ($scope.focus == "front-page"){
-        var recent = $scope.recent_messages.values();
-        console.log("recent messages => " + recent)
-        var m = _.map(recent, function(post_id) {
-            return $scope.get_message(post_id);
-        });
-    } else if ($scope.focus="user-posts") {
-        //console.log("getting user posts");
-        var user = $scope.get_user($scope.focused_user);
-        //console.log("getting posts for " + JSON.stringify(user));
-        var user_posts = user.recent_posts.values();
-        //console.log("user posts: " + JSON.stringify(user_posts));
-
-        var m = _.map(user_posts, function(post_id) {
-            return $scope.get_message(post_id);
-        });
-    }
-
-    var m = _.filter(m, function(x){ return x != null; });
-
-    var m = _.sortBy(m, function(msg){ return msg.timestamp; });
-
-    return m.reverse();
-  }
-
-
-
-  push_user_info = function(user_info) {
-
-        console.log( JSON.stringify(user_info) )
-
-        var recent_posts = new StringSet();
-        user_info.recent_posts.forEach( function(post_id){
-                recent_posts.add(post_id);
-            }
-        );
-        user_info.recent_posts = recent_posts;
-
-        console.log("    pre: " + JSON.stringify(users));
-        users[user_info.user_id] = user_info;
-        console.log("    post: " + JSON.stringify(users));
-  }
-
-
-
-
-  $scope.push_message = function(post_id, favorite, msg) {
-        msg['post_id'] = post_id;
-        msg['favorite'] = favorite;
-        messages[post_id] = msg;
-
-        var author = $scope.get_user(msg.user_id);
-        console.log("author => " + author + " for message => " + JSON.stringify(msg))
-
-        if (author != null){
-            //here we assume the same message isn't being pushed twice. Should probably look out for that upstream
-            author.recent_posts.add(msg.post_id);
-        }
-  }
-
-  $scope.delete_message = function(message) {
-    console.log("delete message");
-    var post_id = message.post_id;
-    //ChatService.send( {delete_message:message.post_id} );
-    $http({ method: 'GET', url: '/post/delete/' + post_id }).
-        success(function(data, status, headers, config) {
-          console.log("deleted post, " + JSON.stringify(data))
-          delete messages[post_id];
-        }).
-        error(function(data, status, headers, config) {
-          console.error("failed to get post info")
-    });
-  }
-
-  $scope.favorite_message = function(message) {
-    console.log("favorite message: " + JSON.stringify(message))
-
-    var post_id = message.post_id;
-
-    if (!message.favorite) {
-        //if (!$scope.$$phase) $scope.$apply(); //???
-        $http({ method: 'GET', url: '/post/favorite/' + post_id }).
-            success(function(data, status, headers, config) {
-              console.log("favorite post, " + JSON.stringify(data))
-              message.favorite = true;
-            }).
-            error(function(data, status, headers, config) {
-              console.error("failed to favorite post")
-        });
-
-    }else{
-        $http({ method: 'GET', url: '/post/unfavorite/' + post_id }).
-            success(function(data, status, headers, config) {
-              console.log("unfavorite post, " + JSON.stringify(data))
-              message.favorite = false;
-            }).
-            error(function(data, status, headers, config) {
-              console.error("failed to unfavorite post")
-        });
-    }
-  }
-
 
   $scope.unfollow_user = function(user_id) {
         console.log("unfollow user " + user_id);
@@ -330,36 +140,10 @@ function AppCtrl($scope, $http, ChatService) {
                     var favorite = msg_info.favorite;
                     var msg = msg_info.msg;
 
-                    fetching_messages.remove(post_id);
-
                     //console.log("pushing message for info " + msg_info)
-                    $scope.push_message(post_id, favorite, msg);
+                    push_message(post_id, favorite, msg);
                 });
             }
-
-            if ('recent_messages' in actual){
-                var recent = actual['recent_messages'];
-                recent.forEach(function(post_id){
-                    $scope.recent_messages.add(post_id);
-                });
-            }
-
-
-            if ('user_info' in actual){
-                var user_info = actual['user_info'];
-                fetching_users.remove(user_info.user_id);
-
-                push_user_info(user_info);
-            }
-
-
-            actual.deleted.forEach(function(post_id){
-                //console.log("handling delete: " + post_id);
-                //console.log("    pre: " + JSON.stringify(messages));
-                delete messages[post_id];
-                //console.log("    post: " + JSON.stringify(messages));
-            });
-
 
             $scope.$apply();
       }

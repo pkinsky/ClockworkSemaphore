@@ -19,7 +19,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scredis.exceptions.RedisParsingException
 import scala.util.{Success, Failure}
 import  scalaz._, std.option._, std.tuple._, syntax.bitraverse._
-import  Scalaz.ToIdOps
+import  Scalaz._
 
 
 import actors.ApplicativeStuff._
@@ -153,7 +153,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       _ <- Future( log.info(s"login: $username yields $uid") )
       Some(actual_password) <- redis.get(RedisSchema.user_password(uid))
       _ <- Future( log.info(s"login: $uid yields password $actual_password with entered password $password") )
-      _ <- if (actual_password == password) Future(()) else Future.failed(Stop(s"passwords '$actual_password' and '$password' not equal"))
+      _ <- if (actual_password === password) Future(()) else Future.failed(Stop(s"passwords '$actual_password' and '$password' not equal"))
     } yield uid
 
   //future of userid for new user or error if invalid somehow
@@ -189,7 +189,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       user_auth_opt <- redis.get(RedisSchema.user_auth(uid))
 	_ <- Future{log.info(s"auth token $user_auth_opt fetched for uid $uid")}
 	Some(user_auth) = user_auth_opt
-      _ <- if (user_auth != auth.token) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
+      _ <- if (user_auth =/= auth.token) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
     } yield uid
   }
 
@@ -208,7 +208,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   def establish_alias(uid: UserId, alias: String) = {
     for {
       alias_unique <- redis.sAdd(RedisSchema.global_usernames, alias)
-      add_result = (alias_unique == 1L)
+      add_result = (alias_unique === 1L)
       _ <- if (add_result)
           (redis.set(RedisSchema.id_to_username(uid), alias) |@|
            redis.set(RedisSchema.username_to_id(alias), uid)){ (_,_) => ()}
