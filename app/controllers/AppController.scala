@@ -218,7 +218,9 @@ class FutureAuthenticatedBuilder[U](userinfo: RequestHeader => Future[U],
                               onUnauthorized: RequestHeader => SimpleResult)
   extends ActionBuilder[({ type R[A] = AuthenticatedRequest[A, U] })#R] {
 
-  def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A, U]) => Future[SimpleResult]) =
+  lazy val log = Logger(s"application.${this.getClass.getName}")
+ 
+   def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A, U]) => Future[SimpleResult]) =
     authenticate(request, block)
 
   /**
@@ -229,7 +231,9 @@ class FutureAuthenticatedBuilder[U](userinfo: RequestHeader => Future[U],
       user <- userinfo(request)
       r <- block(new AuthenticatedRequest(user, request))
     } yield r).recover{
-      case _ => onUnauthorized(request)
+      case ex =>
+		log.error(s"unauthorized user, ex: $ex") 
+		onUnauthorized(request)
     }
 
   }
