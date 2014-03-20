@@ -30,10 +30,6 @@ case class Stop(reason: String) extends Exception(s"stop execution:: $reason")
 
 
 object RedisServiceImpl extends RedisService with RedisConfig {
-/*
-def gen_auth_token(uid: service.UserId): scala.concurrent.Future[service.AuthToken] = ???
-def get_user_name(user_id: service.UserId): scala.concurrent.Future[String] = ???
-*/
 
   private def zipMsgInfo(post_ids: List[PostId]): Future[List[MsgInfo]] =
     for {
@@ -193,7 +189,7 @@ def get_user_name(user_id: service.UserId): scala.concurrent.Future[String] = ??
       user_auth_opt <- redis.get(RedisSchema.user_auth(uid))
 	_ <- Future{log.info(s"auth token $user_auth_opt fetched for uid $uid")}
 	Some(user_auth) = user_auth_opt
-      _ <- if (user_auth != auth) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
+      _ <- if (user_auth != auth.token) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
     } yield uid
   }
 
