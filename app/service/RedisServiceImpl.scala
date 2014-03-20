@@ -177,8 +177,8 @@ def get_user_name(user_id: service.UserId): scala.concurrent.Future[String] = ??
   def gen_auth_token(uid: UserId): Future[AuthToken] = {
     val auth = AuthToken( new scala.util.Random().nextString(15) )
     for {
-      _ <- redis.set(RedisSchema.user_auth(uid), auth)
-      _ <- redis.set(RedisSchema.auth_user(auth), uid)
+      _ <- redis.set(RedisSchema.user_auth(uid), auth.token)
+      _ <- redis.set(RedisSchema.auth_user(auth), uid.uid)
     } yield auth
   }
 
@@ -186,9 +186,13 @@ def get_user_name(user_id: service.UserId): scala.concurrent.Future[String] = ??
   //todo: generate an actual random string, unset previous string
   def user_from_auth_token(auth: AuthToken): Future[UserId] = {
     for {
-      Some(raw_uid) <- redis.get(RedisSchema.auth_user(auth))
+      raw_uid_opt <- redis.get(RedisSchema.auth_user(auth))
+	_ <- Future{log.info(s"auth token $auth yields uid $raw_uid_opt")}
+	Some(raw_uid) = raw_uid_opt
       uid = UserId(raw_uid)
-      Some(user_auth) <- redis.get(RedisSchema.user_auth(uid))
+      user_auth_opt <- redis.get(RedisSchema.user_auth(uid))
+	_ <- Future{log.info(s"auth token $user_auth_opt fetched for uid $uid")}
+	Some(user_auth) = user_auth_opt
       _ <- if (user_auth != auth) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
     } yield uid
   }
@@ -198,10 +202,12 @@ def get_user_name(user_id: service.UserId): scala.concurrent.Future[String] = ??
     redis.hmSetFromMap(RedisSchema.user_info_map(user), UserInfoKeys.to_map(user))
   }
 
-  private def get_alias(uid: UserId): Future[Option[String]] = {
-    redis.get[String](RedisSchema.id_to_username(uid))
-  }
 */
+ 
+  def get_user_name(uid: UserId): Future[String] = {
+    redis.get[String](RedisSchema.id_to_username(uid)).map(_.get)
+  }
+
   //monadic 'short circuit' style flow control is iffy. revisit later
   def establish_alias(uid: UserId, alias: String) = {
     for {

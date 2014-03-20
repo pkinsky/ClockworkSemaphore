@@ -47,9 +47,19 @@ object AppController extends Controller {
 
   val redis_service = RedisServiceImpl.asInstanceOf[RedisService]
 
-  def get_auth_token(req: RequestHeader) = req.session.get("login").map(AuthToken(_))
+  def get_auth_token(req: RequestHeader) = {
+		req.session.get("login").map{t => log.info(s"got token $t"); AuthToken(t)}
+	}
 
-  def authenticate(req: RequestHeader) = get_auth_token(req).map(redis_service.user_from_auth_token(_)).getOrElse(Future.failed(Stop("no auth string")))
+  def authenticate(req: RequestHeader) = {
+    for {
+      token <- get_auth_token(req).map(Future(_)).getOrElse{Future.failed(Stop("no auth string"))}
+      uid <- redis_service.user_from_auth_token(token)
+    } yield {
+      log.info(s"yield uid $uid from authenticate for auth token $token")
+      uid
+    }
+  }
 
   object Authenticated extends FutureAuthenticatedBuilder(
     userinfo= authenticate,
@@ -99,6 +109,8 @@ object AppController extends Controller {
 
       val username = forminfo("username").head
       val password = forminfo("password").head
+
+	log.info(s"user $username registering with password ${password.map(_ => '*')}")
 
       val r = for {
         uid <- redis_service.register_user(username, password)
