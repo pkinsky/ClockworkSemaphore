@@ -61,6 +61,7 @@ app.factory('ChatService', function() {
 
     ws.onopen = function() {
         console.log("ack websocket"); //(send ack message? later, could help avoid initializing too many websockets)
+        service.send("ack")
     };
 
     ws.onerror = function() {
@@ -129,20 +130,16 @@ function AppCtrl($scope, $http, ChatService) {
 
 
   ChatService.subscribe(function(message) {
-            console.log("msg: " + message);
             var actual = jQuery.parseJSON(message)
 
-            if ('msg' in actual){
-                var new_messages = actual['msg'];
+            if ('msg' in actual && 'pid' in actual){
+                var msg = actual['msg'];
+                var post_id = actual['pid'];
 
-                new_messages.forEach(function(msg_info) {
-                    var post_id = msg_info.post_id;
-                    var favorite = msg_info.favorite;
-                    var msg = msg_info.msg;
+                console.log(post_id + " => " + JSON.stringify(msg));
 
-                    //console.log("pushing message for info " + msg_info)
-                    push_message(post_id, favorite, msg);
-                });
+
+                $scope.messages[post_id] = msg;
             }
 
             $scope.$apply();

@@ -1,7 +1,7 @@
 package service
 
 import com.typesafe.config.{ConfigValueFactory, ConfigFactory}
-import scredis.Redis
+import scredis.{Redis, Client}
 import java.net.URI
 
 import scala.collection.JavaConversions._
@@ -19,8 +19,11 @@ trait RedisConfig {
 
   def flushall = redis.flushAll() //dooooom!
 
-  protected val redis = redisUri match{
-    case Some(u) => Redis(ConfigFactory.empty
+
+
+
+  private val config = redisUri match{
+    case Some(u) => ConfigFactory.empty
       .withValue("client",
         ConfigValueFactory.fromMap(
           Map(
@@ -29,7 +32,12 @@ trait RedisConfig {
             "password" -> "raRzMQoBfJTFtwIu"
           ).asJava
         )
-      ))
-    case None => Redis()
+      )
+    case None => ConfigFactory.empty
   }
+
+  protected lazy val redis = Redis(config)
+
+  protected lazy val client = Client(config)
+
 }

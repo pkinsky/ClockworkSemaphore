@@ -51,7 +51,7 @@ object AppController extends Controller {
 		req.session.get("login").map{t => log.info(s"got token $t"); AuthToken(t)}
 	}
 
-  def authenticate(req: RequestHeader) = {
+  def authenticate(req: RequestHeader): Future[UserId] = {
     for {
       token <- get_auth_token(req).map(Future(_)).getOrElse{Future.failed(Stop("no auth string"))}
       uid <- redis_service.user_from_auth_token(token)
@@ -110,7 +110,7 @@ object AppController extends Controller {
       val username = forminfo("username").head
       val password = forminfo("password").head
 
-	log.info(s"user $username registering with password ${password.map(_ => '*')}")
+	    log.info(s"user $username registering with password ${password.map(_ => '*')}")
 
       val r = for {
         uid <- redis_service.register_user(username, password)
@@ -152,7 +152,12 @@ object AppController extends Controller {
     implicit request => {
       val user_id = request.user
 
-      Ok(views.html.app.index(user_id.uid, "fakeusername")) //todo: real username...
+      val r = for {
+        username <- redis_service.get_user_name(user_id)
+      } yield Ok(views.html.app.index(user_id.uid, username))
+
+      Async(r)
+
     }
   }
 
@@ -170,21 +175,31 @@ object AppController extends Controller {
         case None => Future.failed(Stop("no user for auth at websocket"))
       }
 
-      u.flatMap{ userId =>
-         (socketActor ? StartSocket(userId)) map {
-            enumerator =>
-              val it = Iteratee.foreach[JsValue]{
-                case JsObject(Seq((("msg", JsString(msg))))) =>
-                  socketActor ! MakePost(userId, Msg(System.currentTimeMillis, userId, msg))
+      for {
+        uid <- authenticate(requestHeader)
+        enumerator <- (socketActor ? StartSocket(uid))
+      } yield {
+        val it = Iteratee.foreach[JsValue]{
+          case JsObject(Seq((("msg", JsString(msg))))) =>
+            socketActor ! MakePost(uid, Msg(System.currentTimeMillis, uid, msg))
 
-                case js => log.error(s"  ???: received jsvalue $js")
+          case JsString("ack") =>
+            for {
+              feed <- redis_service.get_user_feed(uid)
+            } {
+              for (msg <- feed) socketActor ! SendMessage(uid, msg)
+            }
 
-          }.mapDone {
-                _ => socketActor ! SocketClosed(userId)
-          }
-              (it, enumerator.asInstanceOf[Enumerator[JsValue]])
-          }
-	  }
+
+          case js => log.error(s"  ???: received jsvalue $js")
+
+        }.mapDone {
+          _ => socketActor ! SocketClosed(uid)
+        }
+
+        (it, enumerator.asInstanceOf[Enumerator[JsValue]])
+      }
+
   }
 
   def javascriptRoutes = Action {

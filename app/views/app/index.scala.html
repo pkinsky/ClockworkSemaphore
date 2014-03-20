@@ -2,7 +2,7 @@
 
 @layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl" ng-app="app"
-ng-init="init('@user_id')">
+ng-init="init('@user_id', '@username')">
 
     <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
     <!-- Collect the nav links, forms, and other content for toggling -->
@@ -28,22 +28,15 @@ ng-init="init('@user_id')">
 
     <br>
 
-    <div class="panel panel-tweet" ng-repeat="message in get_messages()">
-    <div class="panel-heading">
-        <img ng-src="@routes.Assets.at("images/avatar.jpeg")" class="img-rounded img-responsive" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;">
-
+    <div class="panel panel-tweet" ng-repeat="(post_id, message) in messages">
         &nbsp
-        {{ get_user(message.user_id).alias }}
-    </div>
+        {{ users[message.user_id] }}
     <div class="panel-body">
         {{ message.body }}
     </div>
     </div>
     </div>
 
-    <div class="col-lg-3 col-md-3 col-sm-3">
-        <!-- (right sidebar) -->
-    </div>
 </div>
 
 
