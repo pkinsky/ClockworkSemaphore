@@ -41,15 +41,18 @@ trait RedisService {
     // given a user id, fetch the corresponding user
     def get_user_name(user_id: UserId): Future[String]
 
+    //given a user, get all posts routed to their feed
+    def get_user_feed(user_id: UserId): Future[Seq[PostId]]
+
+    //get from global feed
+    def get_global_feed(): Future[Seq[PostId]]
+
     // given a user id and a message, save that message and distribute it to all followers of sender
     def post_message(sender: UserId, msg: Msg): Future[PostId]
 
     // given a post id, load that post
     // or nosuchelement exception
     def load_post(post_id: PostId): Future[Msg]
-
-    //load the last N posts by a user
-    def recent_posts(uid: UserId): Future[List[MsgInfo]]
 
 
     //def add_favorite_post(uid: UserId, post_id: String): Future[Unit]
@@ -58,13 +61,6 @@ trait RedisService {
 
     //def load_favorite_posts(uid: UserId): Future[Set[String]]
 
-    //def establish_alias(uid: UserId, alias: String): Future[Boolean]
-
-    //def set_about_me(uid: UserId, text: String): Future[Unit]
-
-    //def get_about_me(uid: UserId): Future[Option[String]]
-
-    //def load_msg_info(uid: UserId, post_id: String): Future[Option[MsgInfo]]
 
     def follow_user(uid: UserId, to_follow:UserId): Future[Unit]
 

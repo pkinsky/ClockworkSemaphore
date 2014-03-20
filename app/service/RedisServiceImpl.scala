@@ -49,35 +49,24 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     } yield msg_info
 
 
-  def load_msg_info(user_id: UserId, post_id: PostId): Future[MsgInfo] = {
-    for {
-      favorites <- redis.sMembers(RedisSchema.user_favorites(user_id))
-      msg <- load_post(post_id)
-    } yield MsgInfo(post_id.pid, msg)
-  }
-
-  def load_post(post_id: PostId): Future[Msg] =
+  def load_post(post_id: PostId): Future[Msg] = {
+    log.info(s"load post $post_id")
     for {
       map <- redis.hmGetAsMap[String](RedisSchema.post_info(post_id))("timestamp", "author", "body")
     } yield {
-      val opt = for{
-        timestamp <- map.get("timestamp")
-        author <- map.get("author")
-        body <- map.get("body")
-      } yield Msg(parseLong(timestamp), UserId(author), body)
-      opt.get  
+        val opt = for{
+          timestamp <- map.get("timestamp")
+          author <- map.get("author")
+          body <- map.get("body")
+        } yield Msg(parseLong(timestamp), UserId(author), body)
+        opt.get
+    }
   }
-
-  /*
-  def delete_post(post_id: PostId): Future[Unit] = {
-     redis.del(RedisSchema.post_info(post_id)).map{ r => log.info("delete result: " + r); () }
-  }
-  */
 
   def save_post(post_id: PostId, msg: Msg): Future[Unit] =
     redis.hmSetFromMap(RedisSchema.post_info(post_id), Map(
 				"timestamp" -> msg.timestamp,
-				"author" -> msg,
+				"author" -> msg.uid.uid,
 				"body" -> msg.body
     ))
 
@@ -86,8 +75,11 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     for {
       recipients <- followers_of(from)
       distribution = for (recipient <- recipients + from) yield {
-        println(s"push post with id $post_id to $recipient")
-        redis.lPush(RedisSchema.user_posts(recipient), post_id)
+
+        for {
+          _ <- redis.lPush(RedisSchema.user_posts(recipient), post_id.pid)
+        } yield {client.publish(s"${recipient.uid}:feed", post_id.pid); ()}
+
       }
       _ <- Future.sequence(distribution)
     } yield ()
@@ -97,7 +89,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     def trim_global = redis.lTrim(RedisSchema.global_timeline,0,1000)
 
     def handle_post(post_id: PostId) =
-      (redis.lPush(RedisSchema.global_timeline, post_id)
+      (redis.lPush(RedisSchema.global_timeline, post_id.pid)
         |@| save_post(post_id, msg)
         |@| distribute_post(user_id, post_id)
       ){ (a,b,c) => log.info("done handling post!"); () }
@@ -163,7 +155,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       uid = UserId(raw_uid)
       //will lead to orphan uuids if validation fails.
       // todo: check username first, then recheck and reserve
-      username_not_taken <- establish_alias(uid, username)
+      username_not_taken <- set_username(uid, username)
       _ <- predicate(username_not_taken)(Stop(s"username $username is taken"))
       _ <- redis.set(RedisSchema.user_password(uid), password)
     } yield uid
@@ -193,19 +185,22 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     } yield uid
   }
 
-/*
-  def save_user(user: User): Future[Unit] = {
-    redis.hmSetFromMap(RedisSchema.user_info_map(user), UserInfoKeys.to_map(user))
-  }
+  //given a user, get all posts routed to their feed
+  def get_user_feed(user_id: UserId): Future[Seq[PostId]] =
+    redis.lRange(RedisSchema.user_posts(user_id), 0, 100).map(_.map(PostId(_)))
 
-*/
- 
-  def get_user_name(uid: UserId): Future[String] = {
+
+  //get from global feed
+  def get_global_feed(): Future[Seq[PostId]] =
+    redis.lRange(RedisSchema.global_timeline, 0, 100).map(_.map(PostId(_)))
+
+
+  def get_user_name(uid: UserId): Future[String] =
     redis.get[String](RedisSchema.id_to_username(uid)).map(_.get)
-  }
+
 
   //monadic 'short circuit' style flow control is iffy. revisit later
-  def establish_alias(uid: UserId, alias: String) = {
+  private def set_username(uid: UserId, alias: String) = {
     for {
       alias_unique <- redis.sAdd(RedisSchema.global_usernames, alias)
       add_result = (alias_unique === 1L)
@@ -217,22 +212,5 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
   }
 
-  def set_about_me(uid: UserId, text: String): Future[Unit] = {
-    redis.set(RedisSchema.user_about_me(uid), text)
-  }
 
-  def get_about_me(uid: UserId): Future[Option[String]] = redis.get[String](RedisSchema.user_about_me(uid))
-
-  /*
-  //todo: store in a hashmap, transform hashmap into case class
-  def get_user(uid: UserId): Future[User] =
-    for {
-      Some(username) <- redis.get(RedisSchema.id_to_username(uid))
-    } yield User(uid, username)
-*/
-
-/*
-  def get_user_posts(uid: UserId): Future[List[String]] =
-    redis.lRange[String](RedisSchema.user_posts(uid), 0, 50)
-*/
 }

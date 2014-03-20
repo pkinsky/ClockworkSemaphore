@@ -52,7 +52,7 @@ case class MsgInfo(pid: String, msg: Msg) extends JsonMessage{
 
 sealed trait SocketMessage
 
-case class SendMessage(user_id: UserId, msg: MsgInfo)
+case class SendMessage(user_id: UserId, post_id: PostId)
 
 case class MakePost(author_uid: UserId, msg: Msg)
 

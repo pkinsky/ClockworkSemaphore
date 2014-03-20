@@ -14,7 +14,9 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.Play.current
-import service.{UserId, PostId, RedisServiceImpl, RedisService}
+import service._
+
+import scredis.pubsub.{Message => RMessage}
 
 
 
@@ -29,15 +31,14 @@ import ApplicativeStuff._
 import scalaz._
 
 
-
-class SocketActor extends Actor {
+//handles websocket, listens as redis client for pubsub messages signaling new posts
+class SocketActor extends Actor with RedisConfig {
 
   val redisService: RedisService = RedisServiceImpl
 
-
   case class UserChannel(uid: UserId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
-  lazy val log = Logger("application." + this.getClass.getName)
+  //lazy val log = Logger("application." + this.getClass.getName)
 
 
   // this map relate every user with his or her UserChannel
@@ -45,6 +46,17 @@ class SocketActor extends Actor {
 
 
   def establishConnection(uid: UserId): UserChannel = {
+
+    //only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
+    // therefore subscribe method will need to be idempotent
+    client.subscribe(s"${uid.uid}:feed"){
+      case RMessage(channel, post_id) => channel.split(":") match {
+        case Array(user_id, "feed") => self ! SendMessage(UserId(user_id), PostId(post_id))
+        case x => log.error(s"unparseable message $x")
+      }
+      case _ =>
+
+    }
     //log.debug(s"establish socket connection for user $user_id")
 
     val userChannel: UserChannel =  webSockets.get(uid) getOrElse {
@@ -70,8 +82,11 @@ class SocketActor extends Actor {
         sender ! userChannel.enumerator
     }
 
-    case SendMessage(user_id, msg) => {
-        send(user_id)(msg :: Nil)
+    case SendMessage(user_id, post_id) => {
+        redisService.load_post(post_id).onComplete{
+          case Success(msg) => send(user_id)(MsgInfo(post_id.pid, msg) :: Nil)
+          case Failure(t) => log.error(s"failed to load post $post_id because of $t")
+        }
     }
 
     case MakePost(from, message) => {
@@ -80,7 +95,7 @@ class SocketActor extends Actor {
       val r = for {
         post_id <- redisService.post_message(from, message)
       } yield {
-	() //don't serialize here. use redis pubsub to handle pushing msg to recipients
+	    () //don't serialize here. use redis pubsub to handle pushing msg to recipients
       }
 
       r.onComplete{
