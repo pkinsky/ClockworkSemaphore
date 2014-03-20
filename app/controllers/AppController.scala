@@ -152,7 +152,7 @@ object AppController extends Controller {
     implicit request => {
       val user_id = request.user
 
-      Ok(views.html.app.index(user_id.uid))
+      Ok(views.html.app.index(user_id.uid, "fakeusername")) //todo: real username...
     }
   }
 

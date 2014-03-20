@@ -1,4 +1,4 @@
-@(user_id: String)
+@(user_id: String, username: String)
 
 @layout("Clockwork Semaphore") {
 <div class="container" ng-controller="AppCtrl" ng-app="app"
@@ -9,11 +9,6 @@ ng-init="init('@user_id')">
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
         <ul class="nav navbar-nav">
             <li><a href="logout"><i class="fa fa-power-off fa-6"></i></a></li>
-            <li>
-                <a ng-click="up_one_level()" ng-if="focus!='front-page'">
-                    <i class="fa fa-arrow-circle-o-left fa-6" style="cursor: pointer;"></i>
-                </a>
-            </li>
         </ul>
     </div>
     </nav>
@@ -24,36 +19,8 @@ ng-init="init('@user_id')">
 
 <div class="row">
 
-    <div class="col-lg-3 col-md-3 col-sm-3">
-        <!-- (left sidebar) -->
-        <div class="panel panel-default" ng-if="focus=='user-posts'">
-            <div class="panel-heading">
-                <!-- <img ng-src="{{get_user(focused_user).avatar_url}}" class="img-rounded"> -->
-                <img ng-src="@routes.Assets.at("images/avatar.jpeg")" class="img-rounded img-responsive">
-
-                &nbsp
-                {{ get_user(focused_user).alias }}
-            </div>
-            <div class="panel-body">
-
-
-             <!-- fix this! -->
-            <a ng-if="focus!='front-page'" ng-show="focused_user!=current_user">
-                <i class="fa fa-star-o fa-6" ng-click="unfollow_user(focused_user)" ng-if="get_user(focused_user).following"  title="follow user"></i>
-                <i class="fa fa-star fa-6" ng-click="follow_user(focused_user)" ng-if="!get_user(focused_user).following" title="unfollow user"></i>
-            </a>
-
-
-            <a class="preserve-whitespace" editable-textarea="get_user(focused_user).about_me"
-               ng-if="current_user==focused_user" onaftersave="update_about_me()">{{ get_user(focused_user).about_me }}</a>
-
-            <a class="preserve-whitespace" ng-if="current_user!=focused_user">{{ get_user(focused_user).about_me }}</a>
-            </div>
-        </div>
-    </div>
-
     <div class="col-lg-6 col-md-6 col-sm-6" id="tweet_column">
-    <form class="form-inline" ng-submit="send()" ng-show="focus=='front-page' || focused_user==current_user">
+    <form class="form-inline" ng-submit="send()">
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
         <input type="submit" class="form-control" />
@@ -63,7 +30,6 @@ ng-init="init('@user_id')">
 
     <div class="panel panel-tweet" ng-repeat="message in get_messages()">
     <div class="panel-heading">
-        <!-- <img ng-src="{{get_user(message.user_id).avatar_url}}" class="img-rounded" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;"> -->
         <img ng-src="@routes.Assets.at("images/avatar.jpeg")" class="img-rounded img-responsive" ng-click="focus_on_user(message.user_id)" style="cursor: pointer;">
 
         &nbsp
@@ -71,19 +37,6 @@ ng-init="init('@user_id')">
     </div>
     <div class="panel-body">
         {{ message.body }}
-        <span class="offset1 span2 label pull-right">
-        <br>
-        <a ng-click="delete_message(message)" ng-if="message.user_id==current_user" style="cursor: pointer;">
-            <i class="fa fa-trash-o fa-6"  title="delete post"></i>
-        </a>
-
-        <a ng-click="favorite_message(message)" ng-if="message.user_id!=current_user" style="cursor: pointer;">
-            <i class="fa fa-star-o fa-6" ng-if="!message.favorite"  title="favorite message"></i>
-            <i class="fa fa-star fa-6" ng-if="message.favorite" title="unfavorite message"></i>
-        </a>
-
-
-    </span>
     </div>
     </div>
     </div>
