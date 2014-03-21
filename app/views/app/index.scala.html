@@ -5,12 +5,11 @@
 ng-init="init('@user_id', '@username')">
 
     <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
-    <!-- Collect the nav links, forms, and other content for toggling -->
-    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-6">
         <ul class="nav navbar-nav">
             <li><a href="logout"><i class="fa fa-power-off fa-6"></i></a></li>
+            <li><a href="#">My Feed</a></li>
+            <li><a href="#">Global Feed</a></li>
         </ul>
-    </div>
     </nav>
 
 
@@ -23,15 +22,14 @@ ng-init="init('@user_id', '@username')">
     <form class="form-inline" ng-submit="send()">
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
-        <input type="submit" class="form-control" />
+        <input type="submit" class="form-control"/>
     </form>
 
     <br>
 
-    <div class="panel panel-tweet" ng-repeat="(post_id, message) in messages">
-        &nbsp
-        {{ users[message.user_id] }}
-    <div class="panel-body">
+    <div class="panel panel-tweet" ng-repeat="message in message_list() | orderBy:'-timestamp'">
+        <h4>{{ users[message.user_id] }}</h4>
+        <div class="panel-body">
         {{ message.body }}
     </div>
     </div>
