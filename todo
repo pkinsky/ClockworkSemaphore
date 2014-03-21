@@ -1,10 +1,6 @@
-1. 140 character limit for posts. client side and server side
-2. 32 character limit for names.
-3. user info in side panel
-    - first, need to allow users to set info:
-        make info panel editable if current user is focused on. show username and/or avatar in navbar to provide link if no posts on screen by current user
-    - about me
-    - website
-	-use http://vitalets.github.io/angular-xeditable/ for editable text
-
+1. unsubscribe from user posts channel when all users's sockets are closed
+2. need ability to follow user
+3. need ability to view global posts, or to discover users in some other ways.
+    - idea: searchbox with predictions for finding user, subscribing to same
+    - idea: view global posts, favorite user by clicking on username / button nearby
 
