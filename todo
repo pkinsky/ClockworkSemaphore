@@ -1,6 +1,46 @@
-1. unsubscribe from user posts channel when all users's sockets are closed
-2. need ability to follow user
-3. need ability to view global posts, or to discover users in some other ways.
-    - idea: searchbox with predictions for finding user, subscribing to same
-    - idea: view global posts, favorite user by clicking on username / button nearby
+1. unsubscribe from user posts channel when all users's sockets are closed (simple)
 
+2. need ability to follow user
+    - add button to tweet header if userid != current user id
+    
+3. need ability to view global posts to discover other users
+    - switch between global feed and local using navbar, 
+        use websocket to request messages with pagination param (page=x, initially 0)
+    - getpage(x) = LSLICE (pagesize * x) (pagesize * (x + 1))
+        overlap will happen in case where new posts have been added to feed, 
+        but messages are stored in hash by post_id so no duplicates
+        
+4. bot posters to demonstrate/test perf at scale:
+    - take a few KB of public domain stories, shakespeare, holmes, etc
+    - create bot posters that loop through these
+    
+5. validation (client side and server side)
+    - username: X-Y chars
+    - password: X-Y chars
+    
+6. error reporting
+    - add error param to login page, defaults to none. in non-none case, show header with error
+        for convenience, only have one error bar. Show errors ex:
+            - Sign in error: invalid username/password
+            - Register error: username too short, too long, bad characters
+            - Register error: password too short, too long
+            - use standard Future.failure channel where possible. 
+                Ensures all errors will be shown in known place, but internal opaque errors may be shown
+                replace if with predicate in for comprehensions
+7. form handling
+    - current form handling is hacky, do better
+
+9. SHA hash passwords. BCrypt looks good, but any reputable library is fine. look for plug-and-play library.
+
+8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.
+    - before/after flushall. need to ensure not run on deploy to heroku
+
+
+10. final pass: there should be no section of code I am not happy showing
+
+
+
+11. writeup: description of app in readme
+    - simple twitter clone with $features
+    - what happens when a user logs in (websockets, pubsub)
+    - redis features used (quick overview of redis schema, reference redis twitter case study
