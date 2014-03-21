@@ -51,7 +51,7 @@ class SocketActor extends Actor with RedisConfig {
     // therefore subscribe method will need to be idempotent
     client.subscribe(s"${uid.uid}:feed"){
       case RMessage(channel, post_id) => channel.split(":") match {
-        case Array(user_id, "feed") => self ! SendMessage(UserId(user_id), PostId(post_id))
+        case Array(user_id, "feed") => self ! SendMessage("my_feed", UserId(user_id), PostId(post_id))
         case x => log.error(s"unparseable message $x")
       }
       case _ =>
@@ -82,9 +82,9 @@ class SocketActor extends Actor with RedisConfig {
         sender ! userChannel.enumerator
     }
 
-    case SendMessage(user_id, post_id) => {
+    case SendMessage(src, user_id, post_id) => {
         redisService.load_post(post_id).onComplete{
-          case Success(msg) => send(user_id)(MsgInfo(post_id.pid, msg) :: Nil)
+          case Success(msg) => send(user_id)(MsgInfo(src, post_id.pid, msg) :: Nil)
           case Failure(t) => log.error(s"failed to load post $post_id because of $t")
         }
     }

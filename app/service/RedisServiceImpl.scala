@@ -22,6 +22,9 @@ import  scalaz._, std.option._, std.tuple._, syntax.bitraverse._
 import  Scalaz._
 
 
+import org.mindrot.jbcrypt.BCrypt
+
+
 import actors.ApplicativeStuff._
 
 
@@ -30,24 +33,6 @@ case class Stop(reason: String) extends Exception(s"stop execution:: $reason")
 
 
 object RedisServiceImpl extends RedisService with RedisConfig {
-
-  private def zipMsgInfo(post_ids: List[PostId]): Future[List[MsgInfo]] =
-    for {
-      posts <-  Future.sequence(post_ids.map{post_id =>
-        load_post(post_id).map(r =>
-            MsgInfo(post_id.pid, r)
-          )
-      })
-    } yield posts
-
-
-
-  def recent_posts(user_id: UserId): Future[List[MsgInfo]] =
-    for {
-      timeline <- redis.lRange[String](RedisSchema.global_timeline, 0, 50)
-      msg_info <- zipMsgInfo(timeline.map(PostId(_)))
-    } yield msg_info
-
 
   def load_post(post_id: PostId): Future[Msg] = {
     log.info(s"load post $post_id")
@@ -138,18 +123,38 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
 
   //returns user id if successful. note: distinction between wrong password and nonexistent username? nah, maybe later
-  def login_user(username: String, password: String): Future[UserId] =
+  def login_user(username: String, password: String): Future[UserId] = {
+
+
     for {
       Some(raw_uid) <- redis.get(RedisSchema.username_to_id(username))
       uid = UserId(raw_uid)
-      _ <- Future( log.info(s"login: $username yields $uid") )
-      Some(actual_password) <- redis.get(RedisSchema.user_password(uid))
-      _ <- Future( log.info(s"login: $uid yields password $actual_password with entered password $password") )
-      _ <- if (actual_password === password) Future(()) else Future.failed(Stop(s"passwords '$actual_password' and '$password' not equal"))
+      Some(passwordHash) <- redis.get(RedisSchema.user_password(uid)) //todo: predicate, but for pattern matching
+      _ <- predicate(checkPassword(password, passwordHash))(Stop("Bad Password"))
     } yield uid
+  }
+
+
+
+
+
+
+
+  private def hashPassword(password: String) =
+    BCrypt.hashpw(password, BCrypt.gensalt())
+
+  private def checkPassword(password: String, passwordHash: String) =
+    BCrypt.checkpw(password, passwordHash)
+
+
+
+
 
   //future of userid for new user or error if invalid somehow
   def register_user(username: String, password: String): Future[UserId] = {
+
+    val hashedPassword = hashPassword(password)
+
     for {
       raw_uid <- redis.incr(RedisSchema.next_user_id).map(_.toString)
       uid = UserId(raw_uid)
@@ -157,7 +162,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       // todo: check username first, then recheck and reserve
       username_not_taken <- set_username(uid, username)
       _ <- predicate(username_not_taken)(Stop(s"username $username is taken"))
-      _ <- redis.set(RedisSchema.user_password(uid), password)
+      _ <- redis.set(RedisSchema.user_password(uid), hashedPassword)
     } yield uid
   }
 

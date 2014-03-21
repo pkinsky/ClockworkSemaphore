@@ -45,14 +45,14 @@ object MsgInfo {
 
 
 //pid is post id, but using string to avoid need for custom serializer
-case class MsgInfo(pid: String, msg: Msg) extends JsonMessage{
+case class MsgInfo(src: String, pid: String, msg: Msg) extends JsonMessage{
   def asJson = Json.toJson(this)
 }
 
 
 sealed trait SocketMessage
 
-case class SendMessage(user_id: UserId, post_id: PostId)
+case class SendMessage(src: String, user_id: UserId, post_id: PostId)
 
 case class MakePost(author_uid: UserId, msg: Msg)
 
