@@ -10,6 +10,7 @@ object ApplicationBuild extends Build {
   val scalaz_concurrent = "org.scalaz" %% "scalaz-concurrent" % "7.0.5" //functional programming voodoo
   val scredis = "com.livestream" %% "scredis" % "1.0.1" //redis wrapper
   val scalacheck =  "org.scalacheck" %% "scalacheck" % "1.11.3" % "test"
+  val bCrypt = "org.mindrot" % "jbcrypt" % "0.3m"
 
 
   val appDependencies = Seq(
@@ -18,7 +19,8 @@ object ApplicationBuild extends Build {
     "commons-codec" % "commons-codec" % "1.7",
     scredis,
     scalaz,
-    scalacheck
+    scalacheck,
+    bCrypt
   )
 
 

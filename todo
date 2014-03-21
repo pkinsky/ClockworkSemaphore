@@ -4,7 +4,7 @@
     - add button to tweet header if userid != current user id
     
 3. need ability to view global posts to discover other users
-    - switch between global feed and local using navbar, 
+    - switch between global feed and local using navbar, <<<DONE>>>
         use websocket to request messages with pagination param (page=x, initially 0)
     - getpage(x) = LSLICE (pagesize * x) (pagesize * (x + 1))
         overlap will happen in case where new posts have been added to feed, 
@@ -33,7 +33,7 @@
                 replace all if's with _ <- predicate(...)(...) in for comprehensions
                 
 7. form handling
-    - current form handling is hacky, do better
+    - current form handling is hacky, do better. use idiomatic play style!
 
 9. SHA hash passwords. BCrypt looks good, but any reputable library is fine. look for plug-and-play library.
 

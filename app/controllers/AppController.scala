@@ -77,7 +77,7 @@ object AppController extends Controller {
         Redirect(routes.AppController.index).withSession( "login" -> auth.token)
       }
 
-      Async(r)
+      Async(r.recover{ case t => log.error(s"during login: $logout"); Redirect(routes.AppController.index)})
   }
 
 
@@ -104,7 +104,7 @@ object AppController extends Controller {
         Redirect(routes.AppController.index).withSession("login" -> auth.token)
       }
 
-      Async(r)
+      Async(r.recover{ case t => log.error(s"during registration: $logout"); Redirect(routes.AppController.index)}) //todo: this still occurs when registering a reserved username
   }
 
   def follow(to_follow: String) = AuthenticatedAPI  {
@@ -113,7 +113,7 @@ object AppController extends Controller {
 
       val r = for {
         _ <- redis_service.follow_user(user_id, UserId(to_follow))
-      } yield Ok("pass ???")
+      } yield Accepted
 
       Async(r)
     }
@@ -125,7 +125,7 @@ object AppController extends Controller {
 
       val r = for {
         _ <- redis_service.unfollow_user(user_id, UserId(to_unfollow))
-      } yield Ok("pass ???")
+      } yield Accepted
 
       Async(r)
     }
@@ -164,14 +164,23 @@ object AppController extends Controller {
         enumerator <- (socketActor ? StartSocket(uid))
       } yield {
         val it = Iteratee.foreach[JsValue]{
-          case JsObject(Seq((("msg", JsString(msg))))) =>
+          case JsObject(Seq( ("msg", JsString(msg)) )) =>
             socketActor ! MakePost(uid, Msg(System.currentTimeMillis, uid, msg))
 
-          case JsString("ack") =>
+          case JsObject(Seq( ("feed", JsString("my_feed")), ("page", JsNumber(page)))) =>
+            log.info(s"load feed for user $uid page $page")
             for {
               feed <- redis_service.get_user_feed(uid)
             } {
-              for (msg <- feed) socketActor ! SendMessage(uid, msg)
+              for (msg <- feed) socketActor ! SendMessage("my_feed", uid, msg)
+            }
+
+          case JsObject(Seq( ("feed", JsString("global_feed")), ("page", JsNumber(page)))) =>
+            log.info(s"load global feed page $page")
+            for {
+              feed <- redis_service.get_global_feed()
+            } {
+              for (msg <- feed) socketActor ! SendMessage("global_feed", uid, msg)
             }
 
 

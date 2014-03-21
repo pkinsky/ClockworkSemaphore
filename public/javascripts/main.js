@@ -60,8 +60,7 @@ app.factory('ChatService', function() {
     var ws = new ReconnectingWebSocket(ws_url("websocket/"));
 
     ws.onopen = function() {
-        console.log("ack websocket"); //(send ack message? later, could help avoid initializing too many websockets)
-        service.send("ack")
+        service.send( {'feed': 'my_feed', 'page': 0} ) //fetch user's feed
     };
 
     ws.onerror = function() {
@@ -96,13 +95,47 @@ function AppCtrl($scope, $http, ChatService) {
     $scope.users[current_user] = username;
   }
 
+
+  $scope.fetch_my_feed = function(page) {
+      ChatService.send( {'feed': 'my_feed', 'page': page} );
+  }
+
+  $scope.fetch_global_feed = function(page) {
+      ChatService.send( {'feed': 'global_feed', 'page': page} );
+  }
+
+
+
   $scope.users = {};
 
   $scope.messages = {};
 
-  $scope.message_list = function() {
-    return _.map($scope.messages, function(v, k) { return v; });
+  $scope.get_messages = function(feed) {
+    var all_messages = _.map($scope.messages, function(v, k) { return v; });
+
+
+    var r = []
+
+    if (feed == "my_feed") {
+        console.log("filter against stringset " + JSON.stringify(my_feed_messages.values()))
+        r =  _.filter(all_messages, function(elem){
+            console.log("   filter against " + JSON.stringify(elem))
+            return my_feed_messages.contains(elem.post_id)
+        } );
+    }
+
+    if (feed == "global_feed") {
+        console.log("filter against stringset " + JSON.stringify(global_feed_messages.values()))
+        r =  _.filter(all_messages, function(elem){ return global_feed_messages.contains(elem.post_id) } );
+    }
+
+    console.log("result is " + JSON.stringify(r) + " for feed " + feed + ", filtered from " + JSON.stringify(all_messages));
+
+    return r;
   }
+
+  $scope.feed = "my_feed"
+
 
   //init to null (binding in init)
   $scope.current_user = null;
@@ -132,15 +165,31 @@ function AppCtrl($scope, $http, ChatService) {
         });
   }
 
+  var global_feed_messages = new StringSet();
+  var my_feed_messages = new StringSet();
 
   ChatService.subscribe(function(message) {
             var actual = jQuery.parseJSON(message)
 
             if ('msg' in actual && 'pid' in actual){
+                console.log("|=> " + JSON.stringify(actual));
+
                 var msg = actual['msg'];
                 var post_id = actual['pid'];
 
-                console.log(post_id + " => " + JSON.stringify(msg));
+                msg['post_id'] = post_id;
+
+                var msg_src = actual['src'];
+
+
+
+                if (msg_src == "my_feed") {
+                    my_feed_messages.add(post_id);
+                }
+
+                if (msg_src == "global_feed") {
+                    global_feed_messages.add(post_id);
+                }
 
 
                 $scope.messages[post_id] = msg;
@@ -157,7 +206,7 @@ function AppCtrl($scope, $http, ChatService) {
   $scope.send = function() {
     var text = $("#tweeter").val();
 	if (text.length > 0){
-		ChatService.send( {msg:text} );
+		ChatService.send( {'msg':text} );
 		$("#tweeter").val("");
 	}
   };
