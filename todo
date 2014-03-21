@@ -13,10 +13,14 @@
 4. bot posters to demonstrate/test perf at scale:
     - take a few KB of public domain stories, shakespeare, holmes, etc
     - create bot posters that loop through these
+    - implement as actor that reads N lines from iterator, makes post. repeats. 
+    - hound of baskerville text: http://www.gutenberg.org/cache/epub/2852/pg2852.txt
+    - tweet line-by line for all nonempty lines. should ensure that direct actor->actor posts are validated 
     
 5. validation (client side and server side)
     - username: X-Y chars
     - password: X-Y chars
+    - messages: X-Y chars
     
 6. error reporting
     - add error param to login page, defaults to none. in non-none case, show header with error
@@ -26,7 +30,8 @@
             - Register error: password too short, too long
             - use standard Future.failure channel where possible. 
                 Ensures all errors will be shown in known place, but internal opaque errors may be shown
-                replace if with predicate in for comprehensions
+                replace all if's with _ <- predicate(...)(...) in for comprehensions
+                
 7. form handling
     - current form handling is hacky, do better
 
@@ -36,11 +41,16 @@
     - before/after flushall. need to ensure not run on deploy to heroku
 
 
-10. final pass: there should be no section of code I am not happy showing
+10. set expire for posts? trim user feeds? 
+    - need to ensure that auto-posting bots will not use up full 25mb redis memory. 
+    - also good practice to trim feeds to 1000 as in global feeds, to avoid runaway feeds
+
+
+11. final pass: there should be no section of code I am not happy showing
 
 
 
-11. writeup: description of app in readme
+12. writeup: description of app in readme
     - simple twitter clone with $features
     - what happens when a user logs in (websockets, pubsub)
     - redis features used (quick overview of redis schema, reference redis twitter case study
