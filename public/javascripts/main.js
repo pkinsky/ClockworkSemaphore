@@ -100,6 +100,10 @@ function AppCtrl($scope, $http, ChatService) {
 
   $scope.messages = {};
 
+  $scope.message_list = function() {
+    return _.map($scope.messages, function(v, k) { return v; });
+  }
+
   //init to null (binding in init)
   $scope.current_user = null;
 
