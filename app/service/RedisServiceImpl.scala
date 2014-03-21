@@ -206,7 +206,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       add_result = (alias_unique === 1L)
       _ <- if (add_result)
           (redis.set(RedisSchema.id_to_username(uid), alias) |@|
-           redis.set(RedisSchema.username_to_id(alias), uid)){ (_,_) => ()}
+           redis.set(RedisSchema.username_to_id(alias), uid.uid)){ (_,_) => ()}
       else Future(false)
     } yield add_result
 
@@ -214,3 +214,18 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

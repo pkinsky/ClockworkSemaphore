@@ -26,22 +26,6 @@ import service._
 import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
 
 
-//todo:
-/*
-  def predicate(if: Boolean)(fail: Exception) returns future with exception if predicate not satisfied
-
-  for flow control without shitty syntax
-
-   use
-   for {
-    _ <- predicate 1 == 2
-   }
-
- */
-
-
-
-
 object AppController extends Controller {
   lazy val log = Logger(s"application.${this.getClass.getName}")
 

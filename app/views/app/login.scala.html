@@ -13,21 +13,94 @@
    todo: add default-nothing error field to this page
    -->
 
+
+
+<div class="row">
+
+    <div class="col-lg-6 col-md-6 col-sm-6">
+
+        LOGIN
+        <form class="form-horizontal" role="form" action="login" method="post">
+            <div class="form-group">
+                <label for="username_login" class="col-sm-2 control-label">Username</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="username_login" placeholder="Username"  name="username">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="password_login" class="col-sm-2 control-label">Password</label>
+                <div class="col-sm-10">
+                    <input type="password" class="form-control" id="password_login" placeholder="Password"  name="password">
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-10">
+                    <button type="submit" class="btn btn-default">Sign in</button>
+                </div>
+            </div>
+        </form>
+
+
+        REGISTER
+        <form class="form-horizontal" role="form" action="register" method="post">
+            <div class="form-group">
+                <label for="username_login" class="col-sm-2 control-label">Username</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="username_login" placeholder="Username"  name="username">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="password_login" class="col-sm-2 control-label">Password</label>
+                <div class="col-sm-10">
+                    <input type="password" class="form-control" id="password_login" placeholder="Password" name="password">
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-10">
+                    <button type="submit" class="btn btn-default">Register</button>
+                    <button type="submit" class="btn btn-default">Register</button>
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+        <!--
+<div class="row">
+<div class="col-md-6">
+    <div class="jumbotron">
     login
-    <form action="login" method="post">
-        Username: <input type="text" name="username"><br>
-        Password: <input type="password" name="password">
+    <form action="login" method="post" role="form">
+        <div class="form-group">
+            <label>Username</label>
+            <input class="form-control" type="text" name="username"><br>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input class="form-control" type="password" name="password">
+        </div>
         <input type="submit" value="Submit">
     </form>
 
 
-        Register
-    <form action="register" method="post">
-        Username: <input type="text" name="username"><br>
-        Password: <input type="password" name="password">
+    Register
+    <form action="register" method="post" role="form">
+        <div class="form-group">
+            <label>Username</label>
+            <input class="form-control" type="text" name="username"><br>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input class="form-control" type="password" name="password">
+        </div>
         <input type="submit" value="Submit">
     </form>
+    </div>
 
+</div>
+</div>
+        -->
 
    <script>
         //dynamic navbar offset

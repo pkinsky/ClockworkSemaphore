@@ -41,3 +41,7 @@ trait RedisConfig {
   protected lazy val client = Client(config)
 
 }
+
+
+
+
