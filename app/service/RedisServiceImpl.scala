@@ -35,22 +35,24 @@ case class Stop(reason: String) extends Exception(s"stop execution:: $reason")
 object RedisServiceImpl extends RedisService with RedisConfig {
 
   //todo: expose Option[Msg] sanely
-  def load_post(post_id: PostId): Future[Msg] = {
+  def load_post(post_id: PostId): Future[Option[Msg]] = {
     log.info(s"load post $post_id")
     for {
       map <- redis.hmGetAsMap[String](RedisSchema.post_info(post_id))("timestamp", "author", "body")
     } yield {
-        val opt = for{
+        for{
           timestamp <- map.get("timestamp")
           author <- map.get("author")
           body <- map.get("body")
-        } yield Msg(parseLong(timestamp), UserId(author), body)
-        opt.get
+        } yield Msg(post_id, parseLong(timestamp), UserId(author), body)
     }
   }
 
-  def load_posts(post_ids: Seq[PostId]): Future[Seq[MsgInfo]] = {
-    Future.sequence(post_ids.map(pid => load_post(pid).map(msg => MsgInfo(pid.pid, msg)) ))
+  //load a sequence of posts, returning all that exist and omiting those which don't
+  def load_posts(post_ids: Seq[PostId]): Future[Seq[Msg]] = {
+    for {
+      msgs <- Future.sequence(post_ids.map(load_post))
+    } yield msgs.collect {case Some(msg) => msg}
   }
 
 
@@ -80,14 +82,16 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       _ <- Future.sequence(distribution)
     } yield ()
 
-  def post_message(user_id: UserId, msg: Msg): Future[PostId] = {
+  def post_message(user_id: UserId, body: String): Future[PostId] = {
+
+    val timestamp = System.currentTimeMillis
 
     def trim_global = redis.lTrim(RedisSchema.global_timeline,0,1000)
 
     def handle_post(post_id: PostId) = {
-       log.info(s"handling post $post_id for $user_id with message $msg")
+       log.info(s"handling post $post_id for $user_id with body $body")
         (redis.lPush(RedisSchema.global_timeline, post_id.pid)
-          |@| save_post(post_id, msg)
+          |@| save_post(post_id, Msg(post_id, timestamp, user_id, body))
           |@| distribute_post(user_id, post_id)
         ){ (a,b,c) => log.info("done handling post!"); () }
       }

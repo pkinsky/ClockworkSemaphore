@@ -9,7 +9,8 @@
     - <<<DONE>>> getpage(x) = LSLICE (pagesize * x) (pagesize * (x + 1))
         overlap will happen in case where new posts have been added to feed, 
         but messages are stored in hash by post_id so no duplicates
-        
+
+<<<BROKEN>>>
 4. bot posters to demonstrate/test perf at scale:
     - take a few KB of public domain stories, shakespeare, holmes, etc
     - create bot posters that loop through these
@@ -29,7 +30,7 @@
             // issue: require passes the string " "
         server side: trim, then check for nonempty.
     
-6. error reporting
+6. error reporting, instead of redirect-and-log
     - add error param to login page, defaults to none. in non-none case, show header with error
         for convenience, only have one error bar. Show errors such as:
             - It's safe to show simplistic errors, because I'll be double-checking for cases where client-side validation was bypassed.
@@ -40,11 +41,13 @@
                 replace all if's with _ <- predicate(...)(...) in for comprehensions
                 
 7. form handling
-    - current form handling is hacky, do better. use idiomatic play style!
+    - current form handling is hacky, do better. use idiomatic play style.
 
 <<<DONE>>> 9. SHA hash passwords. BCrypt looks good, but any reputable library is fine. look for plug-and-play library.
 
+
 8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.
+    - avoid not having test cases to point to
     - before/after flushall. need to ensure these tests are not run on deploy to heroku
 
 
@@ -54,6 +57,7 @@
     - also good practice to trim feeds to 1000 as in global feeds, to avoid runaway feeds
     -could just set posts to expire after N days, let's say 2 because deal with it.
         note: any write on expiring key will cause it to evaporate, leaving hanging post_id pointers
+    - SIMPLEST POSSIBLE: just flush redis memory if it gets out of hand.
 
 
 11. final pass: there should be no section of code I am not happy showing to anyone

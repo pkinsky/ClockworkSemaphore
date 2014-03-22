@@ -1,6 +1,6 @@
 package service
 
-import actors.{MsgInfo, Msg}
+import actors.Msg
 import scala.concurrent.Future
 
 
@@ -35,13 +35,13 @@ trait RedisService {
     def get_global_feed(page: Int): Future[Seq[PostId]]
 
     // given a user id and a message, save that message and distribute it to all followers of sender
-    def post_message(sender: UserId, msg: Msg): Future[PostId]
+    def post_message(sender: UserId, body: String): Future[PostId]
 
     // given a post id, load that post
     // or nosuchelement exception
-    def load_post(post_id: PostId): Future[Msg]
+    def load_post(post_id: PostId): Future[Option[Msg]]
 
-    def load_posts(post_ids: Seq[PostId]): Future[Seq[MsgInfo]]
+    def load_posts(post_ids: Seq[PostId]): Future[Seq[Msg]]
 
   def follow_user(uid: UserId, to_follow:UserId): Future[Unit]
 
