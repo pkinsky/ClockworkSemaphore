@@ -34,6 +34,7 @@ case class Stop(reason: String) extends Exception(s"stop execution:: $reason")
 
 object RedisServiceImpl extends RedisService with RedisConfig {
 
+  //todo: expose Option[Msg] sanely
   def load_post(post_id: PostId): Future[Msg] = {
     log.info(s"load post $post_id")
     for {
@@ -100,7 +101,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   }
 
 
-
+  //todo: move to utils
   def predicate(condition: Boolean)(fail: Exception): Future[Unit] =
     if (condition) Future( () ) else Future.failed(fail)
 
@@ -117,7 +118,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
 
 
-  //idempotent, no-op if already followed
+  //idempotent, this function is a no-op if uid is already followed by to_follow
   def follow_user(uid: UserId, to_follow: UserId): Future[Unit] = {
     for {
       _ <- redis.sAdd(RedisSchema.followed_by(uid), to_follow.uid)
@@ -125,7 +126,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     } yield ()
   }
 
-  //idempotent, no-op if not followed already
+  //idempotent, this function is a no-op if uid is not already followed by to_unfollow
   def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
     for {
        _ <- redis.sRem(RedisSchema.followed_by(uid), to_unfollow.uid)
@@ -140,21 +141,9 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       Some(raw_uid) <- redis.get(RedisSchema.username_to_id(username))
       uid = UserId(raw_uid)
       Some(passwordHash) <- redis.get(RedisSchema.user_password(uid)) //todo: predicate, but for pattern matching
-      _ <- predicate(checkPassword(password, passwordHash))(Stop("Bad Password"))
+      _ <- predicate(BCrypt.checkpw(password, passwordHash))(Stop("Bad Password"))
     } yield uid
   }
-
-
-
-
-
-
-
-  private def hashPassword(password: String) =
-    BCrypt.hashpw(password, BCrypt.gensalt())
-
-  private def checkPassword(password: String, passwordHash: String) =
-    BCrypt.checkpw(password, passwordHash)
 
 
   /*
@@ -162,7 +151,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
    */
   def register_user(username: String, password: String): Future[UserId] = {
 
-    val hashedPassword = hashPassword(password)
+    val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
 
     for {
       raw_uid <- redis.incr(RedisSchema.next_user_id).map(_.toString)
@@ -219,7 +208,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     redis.get[String](RedisSchema.id_to_username(uid)).map(_.get)
 
 
-  //monadic 'short circuit' style flow control is iffy. revisit later
+  //todo: replace if with predicate, or something. Maybe just fall back to exact case study method, no set
   private def set_username(uid: UserId, alias: String) = {
     for {
       alias_unique <- redis.sAdd(RedisSchema.global_usernames, alias)
