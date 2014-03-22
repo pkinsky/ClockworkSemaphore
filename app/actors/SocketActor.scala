@@ -84,7 +84,7 @@ class SocketActor extends Actor with RedisConfig {
 
         val r = for {
           posts <- redisService.load_posts(posts)
-          uids: Set[UserId] = posts.map( m => m.msg.uid ).toSet
+          uids: Set[UserId] = posts.map( msg => msg.uid ).toSet
           //oh dear god what have I done so many lambdas
 
 

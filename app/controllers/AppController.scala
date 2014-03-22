@@ -187,7 +187,7 @@ object AppController extends Controller {
       } yield {
         val it = Iteratee.foreach[JsValue]{
           case JsObject(Seq( ("msg", JsString(msg)) )) =>
-            socketActor ! MakePost(uid, Msg(System.currentTimeMillis, uid, msg))
+            socketActor ! MakePost(uid, msg)
 
           case JsObject(Seq( ("feed", JsString("my_feed")), ("page", JsNumber(page)))) =>
             log.info(s"load feed for user $uid page $page")

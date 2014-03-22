@@ -185,13 +185,11 @@ function AppCtrl($scope, $http, ChatService) {
 
             if ('feed' in update && 'users' in update && 'messages' in update){
 
-                update.messages.forEach( function(msginfo) {
-                    //console.log(JSON.stringify(msg));
+                update.messages.forEach( function(msg) {
+                    console.log(JSON.stringify(msg));
 
-                    var post_id = msginfo.pid;
-                    var msg = msginfo.msg;
+                    var post_id = msg.post_id;
 
-                    msg['post_id'] = post_id;
 
                     if ($scope.current_user == msg.user_id){
                         my_feed_messages.add(post_id);
