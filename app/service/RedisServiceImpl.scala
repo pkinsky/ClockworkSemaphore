@@ -33,9 +33,7 @@ import entities._
 
 object RedisServiceImpl extends RedisService with RedisConfig {
 
-  //todo: expose Option[Msg] sanely
   def load_post(post_id: PostId): Future[Option[Msg]] = {
-    log.info(s"load post $post_id")
     for {
       map <- redis.hmGetAsMap[String](RedisSchema.post_info(post_id))("timestamp", "author", "body")
     } yield {
@@ -81,18 +79,18 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       _ <- Future.sequence(distribution)
     } yield ()
 
-  def post_message(user_id: UserId, body: String): Future[PostId] = {
+  def post_message(author: UserId, body: String): Future[PostId] = {
 
     val timestamp = System.currentTimeMillis
 
     def trim_global = redis.lTrim(RedisSchema.global_timeline,0,1000)
 
     def handle_post(post_id: PostId) = {
-       log.info(s"handling post $post_id for $user_id with body $body")
+       log.info(s"handling post $post_id for $author with body $body")
         (redis.lPush(RedisSchema.global_timeline, post_id.pid)
-          |@| save_post(post_id, Msg(post_id, timestamp, user_id, body))
-          |@| distribute_post(user_id, post_id)
-        ){ (a,b,c) => log.info("done handling post!"); () }
+          |@| save_post(post_id, Msg(post_id, timestamp, author, body))
+          |@| distribute_post(author, post_id)
+        ){ (a,b,c) => () }
       }
 
 
@@ -140,9 +138,9 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   //returns user id if successful. note: distinction between wrong password and nonexistent username? nah, maybe later
   def login_user(username: String, password: String): Future[UserId] = {
     for {
-      Some(raw_uid) <- redis.get(RedisSchema.username_to_id(username))
-      uid = UserId(raw_uid)
-      Some(passwordHash) <- redis.get(RedisSchema.user_password(uid)) //todo: predicate, but for pattern matching
+      raw_uid_opt <- redis.get(RedisSchema.username_to_id(username))
+      uid <- match_or_else(raw_uid_opt, s"no uid for username $username"){case Some(u) => UserId(u)}
+      passwordHash <- match_or_else(raw_uid_opt, s"no hashed password for user $username with uid $uid"){case Some(pw) => pw}
       _ <- predicate(BCrypt.checkpw(password, passwordHash), "password hashes don't match")
     } yield uid
   }
@@ -158,8 +156,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     for {
       raw_uid <- redis.incr(RedisSchema.next_user_id).map(_.toString)
       uid = UserId(raw_uid)
-      //will lead to orphan uuids if validation fails.
-      // todo: check username first, then recheck and reserve
+      // todo: check username first, only then reserve new user id
       username_not_taken <- set_username(uid, username)
       _ <- predicate(username_not_taken, s"username $username is taken")
       _ <- redis.set(RedisSchema.user_password(uid), hashedPassword)
@@ -202,20 +199,23 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     redis.lRange(RedisSchema.global_timeline, start, end).map(_.map(PostId(_)))
   }
 
-  //todo: handle Option[A] sanely, need to bite the bullet and return Future[Option[String]]
   def get_user_name(uid: UserId): Future[String] =
-    redis.get[String](RedisSchema.id_to_username(uid)).map(_.get)
-
-
-  //todo: replace if with predicate, or something. Maybe just fall back to exact case study method, no set
-  private def set_username(uid: UserId, alias: String) = {
     for {
-      alias_unique <- redis.sAdd(RedisSchema.global_usernames, alias)
-      add_result = (alias_unique === 1L)
-      _ <- if (add_result)
-          (redis.set(RedisSchema.id_to_username(uid), alias) |@|
-           redis.set(RedisSchema.username_to_id(alias), uid.uid)){ (_,_) => ()}
-      else Future(false)
+      username_opt <- redis.get[String](RedisSchema.id_to_username(uid))
+      username <- match_or_else(username_opt, s"no username for uid $uid"){case Some(s) => s}
+    } yield username
+
+
+
+  //todo: get rid of set, just check if username has a corresponding uid, same effect
+  private def set_username(uid: UserId, username: String) = {
+    for {
+      username_unique <- redis.sAdd(RedisSchema.global_usernames, username)
+      add_result = (username_unique === 1L)
+      _ <- predicate(add_result, s"user $uid attempting to reserve taken username $username")
+      //use applicative syntax to dispatch futures simultaneously
+      _ <- (redis.set(RedisSchema.id_to_username(uid), username) |@|
+           redis.set(RedisSchema.username_to_id(username), uid.uid)){ (_,_) => ()}
     } yield add_result
 
   }

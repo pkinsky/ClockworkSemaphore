@@ -1,8 +1,9 @@
 
 TOP ISSUE: new user, other users defaulting to followed for some reason
-    -woah, newly created user makes post, has them distributed to other users. Need tests here!
+    -woah, newly created user makes post, has them distributed to other users. Need tests here! (or maybe not? I think users are getting spuriously favorited)
     -also, it's not all users, only some. TESTS NOW PLS!
     -FOLLOWING/UNFOLLOWING USER A has effects outside current user!? what? I might be wrong here.
+	-maybe current user shows as followed after loading posts including user's posts, receiving new json object for current user, overwriting intial isFollowing=false
 
 
 8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.

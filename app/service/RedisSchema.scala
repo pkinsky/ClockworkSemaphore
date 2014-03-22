@@ -11,8 +11,6 @@ object RedisSchema {
    def followers_of(uid: UserId) = "uid:$uid:followers"
   //users followed by uid
    def followed_by(uid: UserId) = "uid:$uid:following"
-  //set of posts favorited by user identified by user_id
-   def user_favorites(uid: UserId) = s"uid:$uid:favorites"
 
   //pseudonym of user identified by user_id, and vice versa
    def id_to_username(uid: UserId) = s"uid:$uid:username"
@@ -24,7 +22,7 @@ object RedisSchema {
    //a user's feed: all posts by them and those they are following
    def user_posts(uid: UserId): String = s"uid:$uid:posts"
 
-  //auth toekn for user id
+  //auth token for user id
    def user_auth(uid: UserId): String = s"uid:$uid:auth"
  
   //user id for auth token
