@@ -1,14 +1,14 @@
-<<<DONE>>> 1. unsubscribe from user posts channel when all users's sockets are closed (simple)
 
-<<<DONE>>>2. need UI to follow user
-    - add button to tweet header if userid != current user id
-    
-<<<DONE>>> 3. need ability to view global posts to discover other users
-    - switch between global feed and local using navbar, <<<DONE>>>
-        use websocket to request messages with pagination param (page=x, initially 0)
-    - <<<DONE>>> getpage(x) = LSLICE (pagesize * x) (pagesize * (x + 1))
-        overlap will happen in case where new posts have been added to feed, 
-        but messages are stored in hash by post_id so no duplicates
+TOP ISSUE: new user, other users defaulting to followed for some reason
+    -woah, newly created user makes post, has them distributed to other users. Need tests here!
+
+
+8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.
+    - avoid not having test cases to point to
+    - before/after flushall. need to ensure these tests are not run on deploy to heroku
+    - WRITE TESTS TO FIND BUGS. MOVE ALL FUTURE HANDLING TO a service running over redisService,
+                such that logic can be tested without needing a play application
+
 
 <<<BROKEN>>>
 4. bot posters to demonstrate/test perf at scale:
@@ -17,18 +17,7 @@
     - implement as actor that reads N lines from iterator, makes post. repeats. 
     - hound of baskerville text: http://www.gutenberg.org/cache/epub/2852/pg2852.txt
     - tweet line-by line for all nonempty lines. should ensure that direct actor->actor posts are validated 
-    
-5. validation (client side and server side)
-    - username: X-Y chars
-        <<<DONE>>> client side: using pattern attribute, 5-15 alphanumeric chars
-        server side:
-    - password: X-Y chars
-        <<<DONE>>> client side: using pattern attribute, 5-15 alphanumeric chars
-        server side:
-    - messages: X-Y chars
-        <<<DONE>>> client side: require nonempty, clicking submit does nothing if empty message
-            // issue: require passes the string " "
-        server side: trim, then check for nonempty.
+
     
 6. error reporting, instead of redirect-and-log
     - add error param to login page, defaults to none. in non-none case, show header with error
@@ -43,12 +32,6 @@
 7. form handling
     - current form handling is hacky, do better. use idiomatic play style.
 
-<<<DONE>>> 9. SHA hash passwords. BCrypt looks good, but any reputable library is fine. look for plug-and-play library.
-
-
-8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.
-    - avoid not having test cases to point to
-    - before/after flushall. need to ensure these tests are not run on deploy to heroku
 
 
 10. trim user feeds
@@ -57,11 +40,10 @@
     - also good practice to trim feeds to 1000 as in global feeds, to avoid runaway feeds
     -could just set posts to expire after N days, let's say 2 because deal with it.
         note: any write on expiring key will cause it to evaporate, leaving hanging post_id pointers
-    - SIMPLEST POSSIBLE: just flush redis memory if it gets out of hand.
+    - SIMPLEST POSSIBLE: just flush redis memory manually if it gets out of hand.
 
 
 11. final pass: there should be no section of code I am not happy showing to anyone
-    add post id to Msg, remove MsgInfo class
 
 12. writeup: description of app in readme
     - simple twitter clone with $features

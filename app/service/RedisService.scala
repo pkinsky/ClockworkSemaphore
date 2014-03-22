@@ -2,12 +2,16 @@ package service
 
 import actors.Msg
 import scala.concurrent.Future
-
+import scalaz.Equal
 
 
 case class PostId(pid: String) extends AnyVal
 
 case class UserId(uid: String) extends AnyVal
+
+object AuthToken{
+  implicit val equals: Equal[AuthToken] = Equal.equal(_ == _)
+}
 
 case class AuthToken(token: String) extends AnyVal
 

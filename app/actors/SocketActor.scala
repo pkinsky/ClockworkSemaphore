@@ -18,6 +18,7 @@ import service._
 
 import scredis.pubsub.{Message => RMessage}
 
+import Utils._
 
 
 import scala.util.Failure
@@ -40,7 +41,7 @@ class SocketActor extends Actor with RedisConfig {
 
   case class UserChannel(uid: UserId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
-  //lazy val log = Logger("application." + this.getClass.getName)
+  override lazy val log = Logger("application." + this.getClass.getName)
 
 
   // this map relate every user with his or her UserChannel
@@ -108,6 +109,7 @@ class SocketActor extends Actor with RedisConfig {
     case MakePost(from, message) => {
 
       val r = for {
+        _ <- predicate(message.nonEmpty, s"$from attempting to post empty message")
         post_id <- redisService.post_message(from, message)
       } yield {
 	      () //don't serialize here. use redis pubsub to handle pushing msg to recipients

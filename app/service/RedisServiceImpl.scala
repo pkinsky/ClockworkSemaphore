@@ -27,10 +27,7 @@ import org.mindrot.jbcrypt.BCrypt
 
 import actors.ApplicativeStuff._
 
-
-case class Stop(reason: String) extends Exception(s"stop execution:: $reason")
-
-
+import Utils._
 
 object RedisServiceImpl extends RedisService with RedisConfig {
 
@@ -105,10 +102,6 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   }
 
 
-  //todo: move to utils
-  def predicate(condition: Boolean)(fail: Exception): Future[Unit] =
-    if (condition) Future( () ) else Future.failed(fail)
-
 
   def followed_by(uid: UserId): Future[Set[UserId]] =
     for {
@@ -145,7 +138,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       Some(raw_uid) <- redis.get(RedisSchema.username_to_id(username))
       uid = UserId(raw_uid)
       Some(passwordHash) <- redis.get(RedisSchema.user_password(uid)) //todo: predicate, but for pattern matching
-      _ <- predicate(BCrypt.checkpw(password, passwordHash))(Stop("Bad Password"))
+      _ <- predicate(BCrypt.checkpw(password, passwordHash), "password hashes don't match")
     } yield uid
   }
 
@@ -163,7 +156,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       //will lead to orphan uuids if validation fails.
       // todo: check username first, then recheck and reserve
       username_not_taken <- set_username(uid, username)
-      _ <- predicate(username_not_taken)(Stop(s"username $username is taken"))
+      _ <- predicate(username_not_taken, s"username $username is taken")
       _ <- redis.set(RedisSchema.user_password(uid), hashedPassword)
     } yield uid
   }
@@ -180,13 +173,10 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   def user_from_auth_token(auth: AuthToken): Future[UserId] = {
     for {
       raw_uid_opt <- redis.get(RedisSchema.auth_user(auth))
-	_ <- Future{log.info(s"auth token $auth yields uid $raw_uid_opt")}
-	Some(raw_uid) = raw_uid_opt
-      uid = UserId(raw_uid)
+      uid <- match_or_else(raw_uid_opt, s"uid not found for auth token: $auth"){ case Some(u) => UserId(u) }
       user_auth_opt <- redis.get(RedisSchema.user_auth(uid))
-	_ <- Future{log.info(s"auth token $user_auth_opt fetched for uid $uid")}
-	Some(user_auth) = user_auth_opt
-      _ <- if (user_auth =/= auth.token) Future.failed(Stop(s"user auth $user_auth doesn't match attempted $auth")) else Future( () )
+      user_auth <- match_or_else(user_auth_opt, s"auth string not found for uid: $uid"){ case Some(a) => AuthToken(a) }
+      _ <- predicate(user_auth === auth, s"user auth $user_auth doesn't match attempted $auth")
     } yield uid
   }
 

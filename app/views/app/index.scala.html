@@ -27,8 +27,7 @@ ng-init="init('@user_id', '@username')">
 <div class="panel panel-tweet" ng-repeat="message in get_messages(feed) | orderBy:'-timestamp'">
     <h4>
         {{ users[message.user_id].username }}
-        <button class="btn btn-default" ng-show="users[message.user_id].isFollowing" ng-click="unfollow_user(message.user_id)">Unfollow</button>
-        <br/>
+        <button class="btn btn-primary" ng-show="users[message.user_id].isFollowing" ng-click="unfollow_user(message.user_id)">Unfollow</button>
         <button class="btn btn-default" ng-show="message.user_id != current_user && !users[message.user_id].isFollowing" ng-click="follow_user(message.user_id)">Follow</button>
     </h4>
     <div class="panel-body">
