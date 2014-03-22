@@ -5,10 +5,12 @@
 ng-init="init('@user_id', '@username')">
 
     <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <a class="navbar-brand" href="#">{{users[current_user].username}}</a>
+
         <ul class="nav navbar-nav">
-            <li><a href="logout"><i class="fa fa-power-off fa-6"></i></a></li>
             <li><a href="#" ng-click="feed = 'my_feed';fetch_my_feed(0)">My Feed</a></li>
             <li><a href="#" ng-click="feed = 'global_feed'; fetch_global_feed(0)">Global Feed</a></li>
+            <li><a href="logout"><i class="fa fa-power-off fa-6"></i></a></li>
         </ul>
     </nav>
 

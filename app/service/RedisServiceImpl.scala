@@ -29,6 +29,8 @@ import actors.ApplicativeStuff._
 
 import Utils._
 
+import entities._
+
 object RedisServiceImpl extends RedisService with RedisConfig {
 
   //todo: expose Option[Msg] sanely
@@ -115,9 +117,11 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
 
 
+  //todo: don't name vals uid, the type already states that they are one!
   //idempotent, this function is a no-op if uid is already followed by to_follow
   def follow_user(uid: UserId, to_follow: UserId): Future[Unit] = {
     for {
+      _ <- predicate(uid =/= to_follow, s"user $uid just tried to follow himself! probably a client-side bug")
       _ <- redis.sAdd(RedisSchema.followed_by(uid), to_follow.uid)
       _ <- redis.sAdd(RedisSchema.followers_of(to_follow), uid.uid)
     } yield ()
@@ -126,6 +130,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   //idempotent, this function is a no-op if uid is not already followed by to_unfollow
   def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
     for {
+      _ <- predicate(uid =/= to_unfollow, s"user $uid just tried to unfollow himself! probably a client-side bug")
        _ <- redis.sRem(RedisSchema.followed_by(uid), to_unfollow.uid)
        _ <- redis.sRem(RedisSchema.followers_of(to_unfollow), uid.uid)
     } yield ()

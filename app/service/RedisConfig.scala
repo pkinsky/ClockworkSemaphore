@@ -17,23 +17,32 @@ trait RedisConfig {
 
   private val redisUri = sys.env.get("REDISCLOUD_URL").map(new URI(_))
 
-  def flushall = redis.flushAll() //dooooom!
+  def flushall = redis.flushAll() //calling this results in dooooom! DOOOOOM!
+
+  val defaultConfig = ConfigFactory.empty
+    .withValue("async", ConfigValueFactory.fromMap(Map("auto-pipeline"->false)))
 
 
-
+  /*
+  todo: currently all commands are retried if an error is recieved by the client.
+  Could lead to double LPUSH of posts, in very rare scenarios. Consider, later
+   */
 
   private val config = redisUri match{
-    case Some(u) => ConfigFactory.empty
+    case Some(u) => defaultConfig
       .withValue("client",
         ConfigValueFactory.fromMap(
           Map(
             "host" -> u.getHost(),
             "port" -> u.getPort(),
-            "password" -> "raRzMQoBfJTFtwIu"
+            "password" -> "raRzMQoBfJTFtwIu",
+            "tries" ->  1
           ).asJava
         )
       )
-    case None => ConfigFactory.empty
+    case None => defaultConfig
+      .withValue("client", ConfigValueFactory.fromMap(Map("tries"->5)))
+
   }
 
   protected lazy val redis = Redis(config)
