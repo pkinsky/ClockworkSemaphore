@@ -92,7 +92,7 @@ function AppCtrl($scope, $http, ChatService) {
   //map of user_id => object describing public components of user
   $scope.init = function (current_user, username) {
     $scope.current_user = current_user;
-    $scope.users[current_user] = username;
+    $scope.users[current_user] = {'uid':current_user, 'username': username, 'isFollowing':false};
   }
 
 
@@ -155,7 +155,7 @@ function AppCtrl($scope, $http, ChatService) {
         $http({ method: 'GET', url: '/user/unfollow/' + user_id }).
             success(function(data, status, headers, config) {
                   console.log("unfollowed user " + user_id + ", " + JSON.stringify(data));
-                  $scope.get_user(user_id).following = false;
+                  $scope.users[user_id].isFollowing  = false;
             }).
             error(function(data, status, headers, config) {
                   console.log("failed to unfollow user " + user_id + ", " + status);
@@ -168,7 +168,7 @@ function AppCtrl($scope, $http, ChatService) {
         $http({ method: 'GET', url: '/user/follow/' + user_id }).
             success(function(data, status, headers, config) {
                   console.log("followed user " + user_id + ", " + JSON.stringify(data));
-                   $scope.get_user(user_id).following = true;
+                  $scope.users[user_id].isFollowing = true;
             }).
             error(function(data, status, headers, config) {
                   console.log("failed to follow user " + user_id + ", " + status);
@@ -208,7 +208,7 @@ function AppCtrl($scope, $http, ChatService) {
                 });
 
                 update.users.forEach( function(user){
-                        $scope.users[user.uid] = user.username;
+                        $scope.users[user.uid] = user;
                     }
                 )
             }

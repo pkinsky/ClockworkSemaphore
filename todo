@@ -1,6 +1,6 @@
 <<<DONE>>> 1. unsubscribe from user posts channel when all users's sockets are closed (simple)
 
-2. need UI to follow user
+<<<DONE>>>2. need UI to follow user
     - add button to tweet header if userid != current user id
     
 <<<DONE>>> 3. need ability to view global posts to discover other users
@@ -31,9 +31,10 @@
     
 6. error reporting
     - add error param to login page, defaults to none. in non-none case, show header with error
-        for convenience, only have one error bar. Show errors ex:
-            - It's safe to show simplistic errors, because I'll be double-checking for cases where client-side validation was bypassed. However, I will still try to make the errors as readable as possible.
-            - Username taken errors, for example, still needs to be delivered this way
+        for convenience, only have one error bar. Show errors such as:
+            - It's safe to show simplistic errors, because I'll be double-checking for cases where client-side validation was bypassed.
+                    However, I will still try to make the errors as readable as possible.
+            - Username taken errors, for example, still needs to be delivered this way.
             - use standard Future.failure channel where possible. 
                 Ensures all errors will be shown in known place, but internal opaque errors may be shown
                 replace all if's with _ <- predicate(...)(...) in for comprehensions
@@ -62,3 +63,5 @@
     - simple twitter clone with $features
     - what happens when a user logs in (websockets, pubsub)
     - redis features used (quick overview of redis schema, reference redis twitter case study
+
+

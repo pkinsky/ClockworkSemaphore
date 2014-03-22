@@ -59,6 +59,19 @@ object AppController extends Controller {
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
 
+  //this really breaks everything, somehow is causing failed to load post errors! somehow it makes redis close the socket(!)
+  /*
+  val holmesIterator = io.Source.fromFile("etc/sherlock.txt").getLines().filterNot(_.isEmpty)
+  Akka.system.scheduler.schedule(10 seconds, 10 seconds){
+    if(holmesIterator.hasNext) {
+      val uid = UserId("robo-sherlock")
+      socketActor ! MakePost(uid, Msg(System.currentTimeMillis, uid, holmesIterator.next()))
+    }
+  }*/
+
+
+
+
   def login2 = Action {
     implicit request =>
 
