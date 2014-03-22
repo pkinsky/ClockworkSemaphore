@@ -24,6 +24,7 @@ import akka.event.slf4j.Logger
 import service._
 
 import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
+import Utils._
 
 
 object AppController extends Controller {
@@ -31,18 +32,14 @@ object AppController extends Controller {
 
   val redis_service = RedisServiceImpl.asInstanceOf[RedisService]
 
-  def get_auth_token(req: RequestHeader) = {
+  def get_auth_token(req: RequestHeader) =
 		req.session.get("login").map{t => AuthToken(t)}
-	}
 
   def authenticate(req: RequestHeader): Future[UserId] = {
     for {
       token <- get_auth_token(req).map(Future(_)).getOrElse{Future.failed(Stop("auth string not found"))}
       uid <- redis_service.user_from_auth_token(token)
-    } yield {
-      //log.info(s"yield uid $uid from authenticate for auth token $token")
-      uid
-    }
+    } yield uid
   }
 
   object Authenticated extends FutureAuthenticatedBuilder(
@@ -58,7 +55,9 @@ object AppController extends Controller {
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
-  //todo: make this pass: it's a good test case, and if the system can handle it that's cool.
+
+
+  //todo: make this pass: it's a good test case, and if the system should handle it or return meaningful errors
   // also need to add user info for robo-sherlock, failing to load a user is a semi-legit reason to fail to load a post
 
   //this really breaks everything, somehow is causing failed to load post errors! somehow it makes redis close the socket(!)
@@ -74,9 +73,19 @@ object AppController extends Controller {
   }*/
 
 
+  val alphanumeric: Set[Char] = (('0' to '1') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
 
+  //todo: move sizes to config file or something
+  def valid_username(username: String): Boolean =
+      username.length >= 5 &&
+      username.length <= 15 &&
+      username.forall( c => alphanumeric.contains(c) )
 
-  def login2 = Action {
+  def valid_password(password: String): Boolean =
+    password.length >= 5 &&
+    password.length <= 15
+
+  def login2 = Action.async{
     implicit request =>
 
       //this is all getting rewritten later
@@ -86,7 +95,9 @@ object AppController extends Controller {
       val password = forminfo("password").head
       //log.info(s"login: $username / $password")
 
-      val r = for {
+      val r: Future[SimpleResult] = for {
+        _ <- predicate(valid_password(password), "invalid password, should have been caught by client-side validation")
+        _ <- predicate(valid_username(username), "invalid username, should have been caught by client-side validation")
         uid <- redis_service.login_user(username, password)
         auth <- redis_service.gen_auth_token(uid)
       } yield {
@@ -94,12 +105,12 @@ object AppController extends Controller {
         Redirect(routes.AppController.index).withSession( "login" -> auth.token)
       }
 
-      Async(r.recover{
+      r.recover{
           case t =>
-            log.error(s"during login: $t");
+            log.error(s"error during login: $t");
             Redirect(routes.AppController.index)
         }
-      )
+
   }
 
 
@@ -107,63 +118,55 @@ object AppController extends Controller {
     Ok( views.html.app.login() )
   }
 
-  def register = Action {
+  //todo: handle registering a reserved username gracefully
+  def register = Action.async{
     implicit request =>
-
       //this is all getting rewritten later
       val forminfo = request.body.asFormUrlEncoded.get
 
       val username = forminfo("username").head
       val password = forminfo("password").head
 
-	    log.info(s"user $username registering with password ${password.map(_ => '*')}")
-
-      val r = for {
+      val r: Future[SimpleResult] = for {
+        _ <- predicate(valid_password(password), "invalid password, should have been caught by client-side validation")
+        _ <- predicate(valid_username(username), "invalid username, should have been caught by client-side validation")
         uid <- redis_service.register_user(username, password)
         auth <- redis_service.gen_auth_token(uid)
       } yield {
-        log.info(s"register: $username / $password results in user $uid with auth string $auth")
         Redirect(routes.AppController.index).withSession("login" -> auth.token)
       }
 
-      Async(r.recover{ case t => log.error(s"during registration: $logout"); Redirect(routes.AppController.index)}) //todo: this still occurs when registering a reserved username
+      r.recover{ case t => log.error(s"error during registration: $t"); Redirect(routes.AppController.index)}
   }
 
-  def follow(to_follow: String) = AuthenticatedAPI  {
+  def follow(to_follow: String) = AuthenticatedAPI.async  {
     implicit request => {
       val user_id = request.user
 
-      val r = for {
+      for {
         _ <- redis_service.follow_user(user_id, UserId(to_follow))
       } yield Accepted
-
-      Async(r)
     }
   }
 
-  def unfollow(to_unfollow: String) = AuthenticatedAPI  {
+  def unfollow(to_unfollow: String) = AuthenticatedAPI.async  {
     implicit request => {
       val user_id = request.user
 
-      val r = for {
+      for {
         _ <- redis_service.unfollow_user(user_id, UserId(to_unfollow))
       } yield Accepted
-
-      Async(r)
     }
   }
 
 
-  def index = Authenticated  {
+  def index = Authenticated.async {
     implicit request => {
       val user_id = request.user
 
-      val r = for {
+      for {
         username <- redis_service.get_user_name(user_id)
       } yield Ok(views.html.app.index(user_id.uid, username))
-
-      Async(r)
-
     }
   }
 
@@ -190,20 +193,20 @@ object AppController extends Controller {
             socketActor ! MakePost(uid, msg)
 
           case JsObject(Seq( ("feed", JsString("my_feed")), ("page", JsNumber(page)))) =>
-            log.info(s"load feed for user $uid page $page")
+            log.info(s"load feed for user $uid page $page for user $uid")
             for {
               feed <- redis_service.get_user_feed(uid, page.toInt)
             } socketActor ! SendMessages("my_feed", uid, feed)
 
 
           case JsObject(Seq( ("feed", JsString("global_feed")), ("page", JsNumber(page)))) =>
-            log.info(s"load global feed page $page")
+            log.info(s"load global feed page $page for user $uid")
             for {
               feed <- redis_service.get_global_feed(page.toInt)
             } socketActor ! SendMessages("global_feed", uid, feed)
 
 
-          case js => log.error(s"  ???: received jsvalue $js")
+          case js => log.error(s"  ???: received invalid jsvalue $js")
 
         }.mapDone {
           _ => socketActor ! SocketClosed(uid)
