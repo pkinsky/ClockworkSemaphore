@@ -28,9 +28,6 @@ object RedisSchema {
   //user id for auth token
    def auth_user(auth: AuthToken): String = s"auth:$auth:uid"
 
-  //global set of pseudonyms currently in use.
-   val global_usernames = "global:aliases"
-
   //list to which all posts are left-pushed
    val global_timeline = "global:timeline"
 
