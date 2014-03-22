@@ -1,6 +1,7 @@
 
 TOP ISSUE: new user, other users defaulting to followed for some reason
     -woah, newly created user makes post, has them distributed to other users. Need tests here!
+    -also, it's not all users, only some. TESTS NOW PLS!
 
 
 8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.

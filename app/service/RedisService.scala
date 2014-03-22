@@ -17,11 +17,12 @@ case class AuthToken(token: String) extends AnyVal
 
 trait RedisService {
 
+    //generate and save an AuthToken for the given UserId
     def gen_auth_token(uid: UserId): Future[AuthToken]
 
     def user_from_auth_token(token: AuthToken): Future[UserId]
 
-    //either register the user with the given username password,
+    //either login the user with the given username password,
     //or throw an exception signaling invalid credentials
     def login_user(username: String, password: String): Future[UserId]
 
@@ -42,12 +43,11 @@ trait RedisService {
     def post_message(sender: UserId, body: String): Future[PostId]
 
     // given a post id, load that post
-    // or nosuchelement exception
     def load_post(post_id: PostId): Future[Option[Msg]]
 
     def load_posts(post_ids: Seq[PostId]): Future[Seq[Msg]]
 
-  def follow_user(uid: UserId, to_follow:UserId): Future[Unit]
+    def follow_user(uid: UserId, to_follow:UserId): Future[Unit]
 
     def unfollow_user(uid: UserId, to_unfollow:UserId): Future[Unit]
 
