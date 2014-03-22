@@ -57,7 +57,7 @@
 
 
 11. final pass: there should be no section of code I am not happy showing to anyone
-
+    add post id to Msg, remove MsgInfo class
 
 12. writeup: description of app in readme
     - simple twitter clone with $features

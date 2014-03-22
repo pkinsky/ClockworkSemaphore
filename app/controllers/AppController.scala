@@ -60,6 +60,8 @@ object AppController extends Controller {
 
 
   //this really breaks everything, somehow is causing failed to load post errors! somehow it makes redis close the socket(!)
+  //actually it's worse: even when commented out, having sent messages from a nonexistent user breaks post loading,
+  // because it's assumed that all posts resolve to Some(post)
   /*
   val holmesIterator = io.Source.fromFile("etc/sherlock.txt").getLines().filterNot(_.isEmpty)
   Akka.system.scheduler.schedule(10 seconds, 10 seconds){
