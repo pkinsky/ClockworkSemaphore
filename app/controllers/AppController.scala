@@ -262,8 +262,8 @@ class FutureAuthenticatedBuilder[U](userinfo: RequestHeader => Future[U],
       r <- block(new AuthenticatedRequest(user, request))
     } yield r).recover{
       case ex =>
-		log.error(s"unauthorized user, ex: $ex") 
-		onUnauthorized(request)
+        log.error(s"error during authorization: $ex")
+        onUnauthorized(request)
     }
 
   }
