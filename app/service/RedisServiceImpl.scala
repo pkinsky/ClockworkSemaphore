@@ -48,6 +48,11 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     }
   }
 
+  def load_posts(post_ids: Seq[PostId]): Future[Seq[MsgInfo]] = {
+    Future.sequence(post_ids.map(pid => load_post(pid).map(msg => MsgInfo(pid.pid, msg)) ))
+  }
+
+
   def save_post(post_id: PostId, msg: Msg): Future[Unit] =
     redis.hmSetFromMap(RedisSchema.post_info(post_id), Map(
 				"timestamp" -> msg.timestamp,
@@ -124,8 +129,6 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
   //returns user id if successful. note: distinction between wrong password and nonexistent username? nah, maybe later
   def login_user(username: String, password: String): Future[UserId] = {
-
-
     for {
       Some(raw_uid) <- redis.get(RedisSchema.username_to_id(username))
       uid = UserId(raw_uid)
@@ -190,14 +193,22 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     } yield uid
   }
 
+  val page_size = 5 //small page size to demonstrate pagination
+
   //given a user, get all posts routed to their feed
-  def get_user_feed(user_id: UserId): Future[Seq[PostId]] =
-    redis.lRange(RedisSchema.user_posts(user_id), 0, 100).map(_.map(PostId(_)))
+  def get_user_feed(user_id: UserId, page: Int): Future[Seq[PostId]] = {
+    val start = page_size * page
+    val end = start + page_size
+    redis.lRange(RedisSchema.user_posts(user_id), start, end).map(_.map(PostId(_)))
+  }
 
 
   //get from global feed
-  def get_global_feed(): Future[Seq[PostId]] =
-    redis.lRange(RedisSchema.global_timeline, 0, 100).map(_.map(PostId(_)))
+  def get_global_feed(page: Int): Future[Seq[PostId]] = {
+    val start = page_size * page
+    val end = start + page_size
+    redis.lRange(RedisSchema.global_timeline, start, end).map(_.map(PostId(_)))
+  }
 
 
   def get_user_name(uid: UserId): Future[String] =

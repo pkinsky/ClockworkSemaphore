@@ -32,12 +32,20 @@ object Msg {
 
 }
 
+object User {
+  implicit val format = Json.format[User]
+}
 
-//todo: case class representing message + isFavorite and post_id for sending to client
-case class Msg(timestamp: Long, uid: UserId, body: String) extends JsonMessage with SocketMessage{
+case class User(uid: String, username: String) extends JsonMessage {
   def asJson = Json.toJson(this)
 }
 
+
+
+
+case class Msg(timestamp: Long, uid: UserId, body: String) extends JsonMessage with SocketMessage{
+  def asJson = Json.toJson(this)
+}
 
 object MsgInfo {
   implicit val format = Json.format[MsgInfo]
@@ -45,14 +53,23 @@ object MsgInfo {
 
 
 //pid is post id, but using string to avoid need for custom serializer
-case class MsgInfo(src: String, pid: String, msg: Msg) extends JsonMessage{
+case class MsgInfo(pid: String, msg: Msg) extends JsonMessage{
   def asJson = Json.toJson(this)
 }
 
 
+object Update {
+  implicit val format = Json.format[Update]
+}
+
+// users is map(user id => user name)
+case class Update(feed: String, users: Seq[User], messages: Seq[MsgInfo]) extends JsonMessage {
+  def asJson = Json.toJson(this)
+}
+
 sealed trait SocketMessage
 
-case class SendMessage(src: String, user_id: UserId, post_id: PostId)
+case class SendMessages(src: String, user_id: UserId, posts: Seq[PostId])
 
 case class MakePost(author_uid: UserId, msg: Msg)
 

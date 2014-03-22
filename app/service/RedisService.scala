@@ -12,20 +12,7 @@ case class UserId(uid: String) extends AnyVal
 case class AuthToken(token: String) extends AnyVal
 
 trait RedisService {
-  /*
-  register_user(username, user_id) => incr uid, use below setter functions
-  get/set user_id(username)
-  get/set username(user id)
-  get/set password
-    follow_user(follower, following)
-    get following
-    get followers
-  make post (user, post body)
-  fetch user posts(user) //single range for now, add pagination later
-  gen_auth_token(user id)
-  get user(token)
-  get token(user id)
- */
+
     def gen_auth_token(uid: UserId): Future[AuthToken]
 
     def user_from_auth_token(token: AuthToken): Future[UserId]
@@ -42,10 +29,10 @@ trait RedisService {
     def get_user_name(user_id: UserId): Future[String]
 
     //given a user, get all posts routed to their feed
-    def get_user_feed(user_id: UserId): Future[Seq[PostId]]
+    def get_user_feed(user_id: UserId, page: Int): Future[Seq[PostId]]
 
     //get from global feed
-    def get_global_feed(): Future[Seq[PostId]]
+    def get_global_feed(page: Int): Future[Seq[PostId]]
 
     // given a user id and a message, save that message and distribute it to all followers of sender
     def post_message(sender: UserId, msg: Msg): Future[PostId]
@@ -54,15 +41,9 @@ trait RedisService {
     // or nosuchelement exception
     def load_post(post_id: PostId): Future[Msg]
 
+    def load_posts(post_ids: Seq[PostId]): Future[Seq[MsgInfo]]
 
-    //def add_favorite_post(uid: UserId, post_id: String): Future[Unit]
-
-    //def remove_favorite_post(uid: UserId, post_id: String): Future[Unit]
-
-    //def load_favorite_posts(uid: UserId): Future[Set[String]]
-
-
-    def follow_user(uid: UserId, to_follow:UserId): Future[Unit]
+  def follow_user(uid: UserId, to_follow:UserId): Future[Unit]
 
     def unfollow_user(uid: UserId, to_unfollow:UserId): Future[Unit]
 

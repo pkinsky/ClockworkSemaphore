@@ -1,12 +1,12 @@
-1. unsubscribe from user posts channel when all users's sockets are closed (simple)
+<<<DONE>>> 1. unsubscribe from user posts channel when all users's sockets are closed (simple)
 
-2. need ability to follow user
+2. need UI to follow user
     - add button to tweet header if userid != current user id
     
-3. need ability to view global posts to discover other users
+<<<DONE>>> 3. need ability to view global posts to discover other users
     - switch between global feed and local using navbar, <<<DONE>>>
         use websocket to request messages with pagination param (page=x, initially 0)
-    - getpage(x) = LSLICE (pagesize * x) (pagesize * (x + 1))
+    - <<<DONE>>> getpage(x) = LSLICE (pagesize * x) (pagesize * (x + 1))
         overlap will happen in case where new posts have been added to feed, 
         but messages are stored in hash by post_id so no duplicates
         
@@ -19,15 +19,21 @@
     
 5. validation (client side and server side)
     - username: X-Y chars
+        <<<DONE>>> client side: using pattern attribute, 5-15 alphanumeric chars
+        server side:
     - password: X-Y chars
+        <<<DONE>>> client side: using pattern attribute, 5-15 alphanumeric chars
+        server side:
     - messages: X-Y chars
+        <<<DONE>>> client side: require nonempty, clicking submit does nothing if empty message
+            // issue: require passes the string " "
+        server side: trim, then check for nonempty.
     
 6. error reporting
     - add error param to login page, defaults to none. in non-none case, show header with error
         for convenience, only have one error bar. Show errors ex:
-            - Sign in error: invalid username/password
-            - Register error: username too short, too long, bad characters
-            - Register error: password too short, too long
+            - It's safe to show simplistic errors, because I'll be double-checking for cases where client-side validation was bypassed. However, I will still try to make the errors as readable as possible.
+            - Username taken errors, for example, still needs to be delivered this way
             - use standard Future.failure channel where possible. 
                 Ensures all errors will be shown in known place, but internal opaque errors may be shown
                 replace all if's with _ <- predicate(...)(...) in for comprehensions
@@ -35,19 +41,21 @@
 7. form handling
     - current form handling is hacky, do better. use idiomatic play style!
 
-9. SHA hash passwords. BCrypt looks good, but any reputable library is fine. look for plug-and-play library.
+<<<DONE>>> 9. SHA hash passwords. BCrypt looks good, but any reputable library is fine. look for plug-and-play library.
 
 8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.
-    - before/after flushall. need to ensure not run on deploy to heroku
+    - before/after flushall. need to ensure these tests are not run on deploy to heroku
 
 
-10. set expire for posts? trim user feeds? 
-    - need to ensure that auto-posting bots will not use up full 25mb redis memory. 
+10. trim user feeds
+    - goal: ensure that auto-posting bots will not use up full 25mb redis memory.
+        however, posts won't go away when they leave the feed. Might just be worth dropping ~$20 on heroku non-free stuff
     - also good practice to trim feeds to 1000 as in global feeds, to avoid runaway feeds
+    -could just set posts to expire after N days, let's say 2 because deal with it.
+        note: any write on expiring key will cause it to evaporate, leaving hanging post_id pointers
 
 
-11. final pass: there should be no section of code I am not happy showing
-
+11. final pass: there should be no section of code I am not happy showing to anyone
 
 
 12. writeup: description of app in readme

@@ -49,8 +49,4 @@ object RedisSchema {
   //info about post identified by post_id
    def post_info(post: PostId) = s"post:${post.pid}:info"
 
-
-
-   def user_about_me(uid: UserId) = s"uid:$uid:about_me"
-
 }
