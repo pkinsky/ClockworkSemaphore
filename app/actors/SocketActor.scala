@@ -46,23 +46,19 @@ class SocketActor extends Actor with RedisConfig {
 
 
   def establishConnection(uid: UserId): UserChannel = {
-
     //only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
     // therefore subscribe method will need to be idempotent
     client.subscribe(s"${uid.uid}:feed"){
       case RMessage(channel, post_id) => channel.split(":") match {
-        case Array(user_id, "feed") => self ! SendMessage("my_feed", UserId(user_id), PostId(post_id))
+        case Array(user_id, "feed") => self ! SendMessages("my_feed", UserId(user_id), PostId(post_id) :: Nil )
         case x => log.error(s"unparseable message $x")
       }
       case _ =>
-
     }
-    //log.debug(s"establish socket connection for user $user_id")
 
     val userChannel: UserChannel =  webSockets.get(uid) getOrElse {
-        val broadcast: (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
-        UserChannel(uid, 0, broadcast._1, broadcast._2)
-
+        val (enumerator, channel): (Enumerator[JsValue], Channel[JsValue]) = Concurrent.broadcast[JsValue]
+        UserChannel(uid, 0, enumerator, channel)
       }
 
     userChannel.channelsCount = userChannel.channelsCount + 1
@@ -72,8 +68,8 @@ class SocketActor extends Actor with RedisConfig {
   }
 
 
-  private def send(uid: UserId)(msgs: Seq[MsgInfo]): Unit =
-    for (msg <- msgs) webSockets(uid).channel push msg.asJson
+  private def send(uid: UserId)(update: Update): Unit =
+    webSockets(uid).channel push update.asJson
 
 
   override def receive = {
@@ -82,20 +78,29 @@ class SocketActor extends Actor with RedisConfig {
         sender ! userChannel.enumerator
     }
 
-    case SendMessage(src, user_id, post_id) => {
-        redisService.load_post(post_id).onComplete{
-          case Success(msg) => send(user_id)(MsgInfo(src, post_id.pid, msg) :: Nil)
-          case Failure(t) => log.error(s"failed to load post $post_id because of $t")
+    case SendMessages(src, user_id, posts) => {
+
+        val r = for {
+          posts <- redisService.load_posts(posts)
+          uids: Set[UserId] = posts.map( m => m.msg.uid ).toSet
+          //oh dear god what have I done
+          users <- Future.sequence( uids.map( u => redisService.get_user_name(u).map( s => User(u.uid, s)) ) )
+
+        } yield send(user_id)(Update(src, users.toSeq, posts))
+
+        r.onComplete{
+          case Failure(t) => log.error(s"failed to load posts $posts because $t")
+          case Success(msg) =>
         }
+
     }
 
     case MakePost(from, message) => {
-      log.info(s"$from pushing msg: $message" )
 
       val r = for {
         post_id <- redisService.post_message(from, message)
       } yield {
-	    () //don't serialize here. use redis pubsub to handle pushing msg to recipients
+	      () //don't serialize here. use redis pubsub to handle pushing msg to recipients
       }
 
       r.onComplete{
@@ -113,7 +118,8 @@ class SocketActor extends Actor with RedisConfig {
           webSockets += (user_id -> userChannel)
           //log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
         } else {
-          removeUserChannel(user_id)
+            client.unsubscribe(s"${user_id.uid}:feed")
+            removeUserChannel(user_id)
         }
       }
   }

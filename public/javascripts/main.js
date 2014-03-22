@@ -96,6 +96,15 @@ function AppCtrl($scope, $http, ChatService) {
   }
 
 
+  $scope.fetch_feed = function(feed, page){
+      if ("my_feed" == feed) {
+            $scope.fetch_my_feed(page)
+      }
+      if ("global_feed" == feed) {
+            $scope.fetch_global_feed(page)
+      }
+  }
+
   $scope.fetch_my_feed = function(page) {
       ChatService.send( {'feed': 'my_feed', 'page': page} );
   }
@@ -117,7 +126,7 @@ function AppCtrl($scope, $http, ChatService) {
     var r = []
 
     if (feed == "my_feed") {
-        console.log("filter against stringset " + JSON.stringify(my_feed_messages.values()))
+        console.log("filter against stringset " + JSON.stringify(my_feed_messages.values()));
         r =  _.filter(all_messages, function(elem){
             console.log("   filter against " + JSON.stringify(elem))
             return my_feed_messages.contains(elem.post_id)
@@ -125,7 +134,7 @@ function AppCtrl($scope, $http, ChatService) {
     }
 
     if (feed == "global_feed") {
-        console.log("filter against stringset " + JSON.stringify(global_feed_messages.values()))
+        console.log("filter against stringset " + JSON.stringify(global_feed_messages.values()));
         r =  _.filter(all_messages, function(elem){ return global_feed_messages.contains(elem.post_id) } );
     }
 
@@ -136,6 +145,7 @@ function AppCtrl($scope, $http, ChatService) {
 
   $scope.feed = "my_feed"
 
+  $scope.feed_page = {'my_feed': 0, 'global_feed': 0};
 
   //init to null (binding in init)
   $scope.current_user = null;
@@ -168,31 +178,39 @@ function AppCtrl($scope, $http, ChatService) {
   var global_feed_messages = new StringSet();
   var my_feed_messages = new StringSet();
 
-  ChatService.subscribe(function(message) {
-            var actual = jQuery.parseJSON(message)
+  ChatService.subscribe(function(update) {
+            console.log(update)
 
-            if ('msg' in actual && 'pid' in actual){
-                console.log("|=> " + JSON.stringify(actual));
+            update = jQuery.parseJSON(update)
 
-                var msg = actual['msg'];
-                var post_id = actual['pid'];
+            if ('feed' in update && 'users' in update && 'messages' in update){
 
-                msg['post_id'] = post_id;
+                update.messages.forEach( function(msginfo) {
+                    //console.log(JSON.stringify(msg));
 
-                var msg_src = actual['src'];
+                    var post_id = msginfo.pid;
+                    var msg = msginfo.msg;
+
+                    msg['post_id'] = post_id;
+
+                    if ($scope.current_user == msg.user_id){
+                        my_feed_messages.add(post_id);
+                        global_feed_messages.add(post_id);
+                    }else if ("my_feed" == update.feed) {
+                        my_feed_messages.add(post_id);
+                    }else if ("global_feed" == update.feed) {
+                        global_feed_messages.add(post_id);
+                    }
 
 
+                    $scope.messages[post_id] = msg;
 
-                if (msg_src == "my_feed") {
-                    my_feed_messages.add(post_id);
-                }
+                });
 
-                if (msg_src == "global_feed") {
-                    global_feed_messages.add(post_id);
-                }
-
-
-                $scope.messages[post_id] = msg;
+                update.users.forEach( function(user){
+                        $scope.users[user.uid] = user.username;
+                    }
+                )
             }
 
             $scope.$apply();

@@ -13,13 +13,10 @@ ng-init="init('@user_id', '@username')">
     </nav>
 
 
-
-
-
 <div class="row">
 
-    <div class="col-lg-6 col-md-6 col-sm-6" id="tweet_column">
-    <form class="form-inline" ng-submit="send()">
+<div class="col-lg-6 col-md-6 col-sm-6" id="tweet_column">
+    <form class="form-inline" ng-submit="send()" require>
         <textarea ng-model="text" class="form-control" placeholder="> input message" class="message" id="tweeter"></textarea >
         <br>
         <input type="submit" class="form-control"/>
@@ -27,13 +24,14 @@ ng-init="init('@user_id', '@username')">
 
     <br>
 
-    <div class="panel panel-tweet" ng-repeat="message in get_messages(feed) | orderBy:'-timestamp'">
-        <h4>{{ users[message.user_id] }}</h4>
-        <div class="panel-body">
+<div class="panel panel-tweet" ng-repeat="message in get_messages(feed) | orderBy:'-timestamp'">
+    <h4>{{ users[message.user_id] }}</h4>
+    <div class="panel-body">
         {{ message.body }}
     </div>
-    </div>
-    </div>
+    <button ng-show="$last" class="btn btn-default" ng-click="feed_page[feed] = feed_page[feed] + 1; fetch_feed(feed, feed_page[feed])">Load more posts</button>
+</div>
+</div>
 
 </div>
 
