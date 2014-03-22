@@ -68,7 +68,12 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
         for {
           _ <- redis.lPush(RedisSchema.user_posts(recipient), post_id.pid)
-        } yield {client.publish(s"${recipient.uid}:feed", post_id.pid); ()}
+          channel = s"${recipient.uid}:feed"
+        } yield {
+          log.info(s"distributing post, push ${post_id.pid} to $channel")
+          client.publish(channel, post_id.pid)
+          ()
+        }
 
       }
       _ <- Future.sequence(distribution)
@@ -78,11 +83,13 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
     def trim_global = redis.lTrim(RedisSchema.global_timeline,0,1000)
 
-    def handle_post(post_id: PostId) =
-      (redis.lPush(RedisSchema.global_timeline, post_id.pid)
-        |@| save_post(post_id, msg)
-        |@| distribute_post(user_id, post_id)
-      ){ (a,b,c) => log.info("done handling post!"); () }
+    def handle_post(post_id: PostId) = {
+       log.info(s"handling post $post_id for $user_id with message $msg")
+        (redis.lPush(RedisSchema.global_timeline, post_id.pid)
+          |@| save_post(post_id, msg)
+          |@| distribute_post(user_id, post_id)
+        ){ (a,b,c) => log.info("done handling post!"); () }
+      }
 
 
     for {
@@ -110,19 +117,19 @@ object RedisServiceImpl extends RedisService with RedisConfig {
 
 
 
-  //ignore if already followed
+  //idempotent, no-op if already followed
   def follow_user(uid: UserId, to_follow: UserId): Future[Unit] = {
     for {
-      _ <- redis.sAdd(RedisSchema.followed_by(uid), to_follow)
-      _ <- redis.sAdd(RedisSchema.followers_of(to_follow), uid)
+      _ <- redis.sAdd(RedisSchema.followed_by(uid), to_follow.uid)
+      _ <- redis.sAdd(RedisSchema.followers_of(to_follow), uid.uid)
     } yield ()
   }
 
-  //ignore if not followed already
+  //idempotent, no-op if not followed already
   def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
     for {
-       _ <- redis.sRem(RedisSchema.followed_by(uid), to_unfollow)
-       _ <- redis.sRem(RedisSchema.followers_of(to_unfollow), uid)
+       _ <- redis.sRem(RedisSchema.followed_by(uid), to_unfollow.uid)
+       _ <- redis.sRem(RedisSchema.followers_of(to_unfollow), uid.uid)
     } yield ()
   }
 

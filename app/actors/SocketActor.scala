@@ -31,6 +31,8 @@ import ApplicativeStuff._
 import scalaz._
 
 
+
+
 //handles websocket, listens as redis client for pubsub messages signaling new posts
 class SocketActor extends Actor with RedisConfig {
 
@@ -83,8 +85,16 @@ class SocketActor extends Actor with RedisConfig {
         val r = for {
           posts <- redisService.load_posts(posts)
           uids: Set[UserId] = posts.map( m => m.msg.uid ).toSet
-          //oh dear god what have I done
-          users <- Future.sequence( uids.map( u => redisService.get_user_name(u).map( s => User(u.uid, s)) ) )
+          //oh dear god what have I done so many lambdas
+
+
+          following <- redisService.followed_by(user_id)
+
+          users <- Future.sequence(uids.map{ uid => for {
+              username <-  redisService.get_user_name(uid)
+            } yield User(uid.uid, username, following.contains(uid))
+          })
+
 
         } yield send(user_id)(Update(src, users.toSeq, posts))
 
