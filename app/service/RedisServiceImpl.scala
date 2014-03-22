@@ -157,8 +157,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       raw_uid <- redis.incr(RedisSchema.next_user_id).map(_.toString)
       uid = UserId(raw_uid)
       // todo: check username first, only then reserve new user id
-      username_not_taken <- set_username(uid, username)
-      _ <- predicate(username_not_taken, s"username $username is taken")
+      _ <- set_username(uid, username)
       _ <- redis.set(RedisSchema.user_password(uid), hashedPassword)
     } yield uid
   }
@@ -206,17 +205,16 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     } yield username
 
 
-
-  //todo: get rid of set, just check if username has a corresponding uid, same effect
   private def set_username(uid: UserId, username: String) = {
     for {
-      username_unique <- redis.sAdd(RedisSchema.global_usernames, username)
-      add_result = (username_unique === 1L)
-      _ <- predicate(add_result, s"user $uid attempting to reserve taken username $username")
+      uid_for_username <- redis.get(RedisSchema.username_to_id(username))
+      _ <- match_or_else(uid_for_username , s"user $uid attempting to reserve taken username $username, already in use by user with uid $uid_for_username"){
+        case None =>
+      }
       //use applicative syntax to dispatch futures simultaneously
       _ <- (redis.set(RedisSchema.id_to_username(uid), username) |@|
            redis.set(RedisSchema.username_to_id(username), uid.uid)){ (_,_) => ()}
-    } yield add_result
+    } yield ()
 
   }
 
