@@ -58,6 +58,8 @@ object AppController extends Controller {
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
+  //todo: make this pass: it's a good test case, and if the system can handle it that's cool.
+  // also need to add user info for robo-sherlock, failing to load a user is a semi-legit reason to fail to load a post
 
   //this really breaks everything, somehow is causing failed to load post errors! somehow it makes redis close the socket(!)
   //actually it's worse: even when commented out, having sent messages from a nonexistent user breaks post loading,
