@@ -22,6 +22,7 @@ import play.api.Routes
 import scala.util.{ Success, Failure }
 import akka.event.slf4j.Logger
 import service._
+import entities._
 
 import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
 import Utils._
@@ -73,7 +74,7 @@ object AppController extends Controller {
   }*/
 
 
-  val alphanumeric: Set[Char] = (('0' to '1') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
+  val alphanumeric: Set[Char] = (('0' to '9') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
 
   //todo: move sizes to config file or something
   def valid_username(username: String): Boolean =
@@ -96,8 +97,8 @@ object AppController extends Controller {
       //log.info(s"login: $username / $password")
 
       val r: Future[SimpleResult] = for {
-        _ <- predicate(valid_password(password), "invalid password, should have been caught by client-side validation")
-        _ <- predicate(valid_username(username), "invalid username, should have been caught by client-side validation")
+        _ <- predicate(valid_password(password), s"invalid password $password, should have been caught by client-side validation")
+        _ <- predicate(valid_username(username), s"invalid username $username, should have been caught by client-side validation")
         uid <- redis_service.login_user(username, password)
         auth <- redis_service.gen_auth_token(uid)
       } yield {
@@ -128,8 +129,8 @@ object AppController extends Controller {
       val password = forminfo("password").head
 
       val r: Future[SimpleResult] = for {
-        _ <- predicate(valid_password(password), "invalid password, should have been caught by client-side validation")
-        _ <- predicate(valid_username(username), "invalid username, should have been caught by client-side validation")
+        _ <- predicate(valid_password(password), s"invalid password $password, should have been caught by client-side validation")
+        _ <- predicate(valid_username(username), s"invalid username $username, should have been caught by client-side validation")
         uid <- redis_service.register_user(username, password)
         auth <- redis_service.gen_auth_token(uid)
       } yield {
@@ -244,30 +245,7 @@ object AppController extends Controller {
 
 
 
-class FutureAuthenticatedBuilder[U](userinfo: RequestHeader => Future[U],
-                              onUnauthorized: RequestHeader => SimpleResult)
-  extends ActionBuilder[({ type R[A] = AuthenticatedRequest[A, U] })#R] {
 
-  lazy val log = Logger(s"application.${this.getClass.getName}")
- 
-   def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A, U]) => Future[SimpleResult]) =
-    authenticate(request, block)
-
-  /**
-   * Authenticate the given block.
-   */
-  def authenticate[A](request: Request[A], block: (AuthenticatedRequest[A, U]) => Future[SimpleResult]) = {
-    (for {
-      user <- userinfo(request)
-      r <- block(new AuthenticatedRequest(user, request))
-    } yield r).recover{
-      case ex =>
-        log.error(s"error during authorization: $ex")
-        onUnauthorized(request)
-    }
-
-  }
-}
 
 
 

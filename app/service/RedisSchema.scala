@@ -1,5 +1,7 @@
 package service
 
+import entities.{PostId, AuthToken, UserId}
+
 /**
  * Created by paul on 1/26/14.
  */
@@ -16,22 +18,16 @@ object RedisSchema {
    def id_to_username(uid: UserId) = s"uid:$uid:username"
    def username_to_id(username: String) = s"username:$username:uid"
 
-
-  //plaintext password! Fix later.
+   //hashed password
    def user_password(uid: UserId) = s"uid:$uid:password"
 
-
-  // <OLD> posts made by a user
-  //now needs to be all posts of interest to user for display (posts by following)
+   //a user's feed: all posts by them and those they are following
    def user_posts(uid: UserId): String = s"uid:$uid:posts"
 
-  //hashmap of user info. question: fold in about me, avatar url, username? why not?
-   def user_info_map(uid: UserId) = s"user:$uid:info"
-
-  //auth string for user uid. ignoring uniqueness requirement for now
+  //auth toekn for user id
    def user_auth(uid: UserId): String = s"uid:$uid:auth"
  
-  //user id for auth string
+  //user id for auth token
    def auth_user(auth: AuthToken): String = s"auth:$auth:uid"
 
   //global set of pseudonyms currently in use.
