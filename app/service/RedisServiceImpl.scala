@@ -157,10 +157,9 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     BCrypt.checkpw(password, passwordHash)
 
 
-
-
-
-  //future of userid for new user or error if invalid somehow
+  /*
+  todo: clean up
+   */
   def register_user(username: String, password: String): Future[UserId] = {
 
     val hashedPassword = hashPassword(password)
@@ -176,7 +175,6 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     } yield uid
   }
 
-  //todo: generate an actual random string, unset previous string
   def gen_auth_token(uid: UserId): Future[AuthToken] = {
     val auth = AuthToken( new scala.util.Random().nextString(15) )
     for {
@@ -186,7 +184,6 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   }
 
 
-  //todo: generate an actual random string, unset previous string
   def user_from_auth_token(auth: AuthToken): Future[UserId] = {
     for {
       raw_uid_opt <- redis.get(RedisSchema.auth_user(auth))
@@ -217,7 +214,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
     redis.lRange(RedisSchema.global_timeline, start, end).map(_.map(PostId(_)))
   }
 
-
+  //todo: handle Option[A] sanely, need to bite the bullet and return Future[Option[String]]
   def get_user_name(uid: UserId): Future[String] =
     redis.get[String](RedisSchema.id_to_username(uid)).map(_.get)
 
