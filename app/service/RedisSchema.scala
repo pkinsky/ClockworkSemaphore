@@ -8,9 +8,9 @@ import entities.{PostId, AuthToken, UserId}
 object RedisSchema {
 
   //users following uid
-   def followers_of(uid: UserId) = "uid:$uid:followers"
+   def followed_by(uid: UserId) = s"uid:$uid:followers"
   //users followed by uid
-   def followed_by(uid: UserId) = "uid:$uid:following"
+   def is_following(uid: UserId) = s"uid:$uid:following"
 
   //pseudonym of user identified by user_id, and vice versa
    def id_to_username(uid: UserId) = s"uid:$uid:username"

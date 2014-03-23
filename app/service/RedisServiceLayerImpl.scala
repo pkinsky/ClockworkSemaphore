@@ -57,7 +57,7 @@ trait RedisServiceLayerImpl extends RedisServiceLayer {
 
     def distribute_post(from: UserId, post_id: PostId): Future[Unit] =
       for {
-        recipients <- followers_of(from)
+        recipients <- followed_by(from)
         distribution = for (recipient <- recipients + from) yield {
 
           for {
@@ -65,6 +65,7 @@ trait RedisServiceLayerImpl extends RedisServiceLayer {
             channel = s"${recipient.uid}:feed"
           } yield {
             log.info(s"distributing post, push ${post_id.pid} to $channel")
+            println(s"client.publish(${channel}, ${post_id.pid})")
             client.publish(channel, post_id.pid)
           }
 
@@ -96,14 +97,14 @@ trait RedisServiceLayerImpl extends RedisServiceLayer {
 
 
 
-    def followed_by(uid: UserId): Future[Set[UserId]] =
+    def is_following(uid: UserId): Future[Set[UserId]] =
       for {
-        following <- redis.sMembers(RedisSchema.followed_by(uid))
+        following <- redis.sMembers(RedisSchema.is_following(uid))
       } yield following.map( id => UserId(id) )
 
-    def followers_of(uid: UserId): Future[Set[UserId]] =
+    def followed_by(uid: UserId): Future[Set[UserId]] =
       for {
-        followers <- redis.sMembers(RedisSchema.followers_of(uid))
+        followers <- redis.sMembers(RedisSchema.followed_by(uid))
       } yield followers.map( id => UserId(id) )
 
 
@@ -111,19 +112,21 @@ trait RedisServiceLayerImpl extends RedisServiceLayer {
     //todo: don't name vals uid, the type already states that they are one!
     //idempotent, this function is a no-op if uid is already followed by to_follow
     def follow_user(uid: UserId, to_follow: UserId): Future[Unit] = {
+      println(s"follow_user($uid: UserId, $to_follow: UserId)")
       for {
         _ <- predicate(uid =/= to_follow, s"user $uid just tried to follow himself! probably a client-side bug")
-        _ <- redis.sAdd(RedisSchema.followed_by(uid), to_follow.uid)
-        _ <- redis.sAdd(RedisSchema.followers_of(to_follow), uid.uid)
+        _ <- redis.sAdd(RedisSchema.is_following(uid), to_follow.uid)
+        _ <- redis.sAdd(RedisSchema.followed_by(to_follow), uid.uid)
       } yield ()
     }
 
     //idempotent, this function is a no-op if uid is not already followed by to_unfollow
     def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
+      println(s"follow_user($uid: UserId, $to_unfollow: UserId)")
       for {
         _ <- predicate(uid =/= to_unfollow, s"user $uid just tried to unfollow himself! probably a client-side bug")
-        _ <- (redis.sRem(RedisSchema.followed_by(uid), to_unfollow.uid) |@|
-          redis.sRem(RedisSchema.followers_of(to_unfollow), uid.uid)){ (_,_) => () }
+        _ <- (redis.sRem(RedisSchema.is_following(uid), to_unfollow.uid) |@|
+          redis.sRem(RedisSchema.followed_by(to_unfollow), uid.uid)){ (_,_) => () }
       } yield ()
     }
 

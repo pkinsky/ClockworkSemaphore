@@ -43,9 +43,9 @@ trait RedisServiceLayer {
 
     def unfollow_user(uid: UserId, to_unfollow:UserId): Future[Unit]
 
-    def followers_of(uid: UserId): Future[Set[UserId]]
-
     def followed_by(uid: UserId): Future[Set[UserId]]
+
+    def is_following(uid: UserId): Future[Set[UserId]]
   }
 
   type RedisServiceLike <: RedisService

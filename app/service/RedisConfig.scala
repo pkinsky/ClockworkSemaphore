@@ -15,7 +15,7 @@ import play.api.Logger
 trait RedisConfig {
   lazy val log = Logger("application." + this.getClass.getName)
 
-  private val redisUri = sys.env.get("REDISCLOUD_URL").map(new URI(_))
+  private val redisUri = sys.env.get("REDISTOGO_URL").map(new URI(_))
 
   def flushall = redis.flushAll() //calling this results in dooooom! DOOOOOM!
 

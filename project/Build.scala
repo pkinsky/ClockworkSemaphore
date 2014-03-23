@@ -8,7 +8,7 @@ object ApplicationBuild extends Build {
 
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.0.5" //functional programming voodoo
   val scalaz_concurrent = "org.scalaz" %% "scalaz-concurrent" % "7.0.5" //functional programming voodoo
-  val scredis = "com.livestream" %% "scredis" % "1.0.1" //redis wrapper
+  val scredis = "com.livestream" %% "scredis" % "1.1.0" //redis wrapper
   val scalacheck =  "org.scalacheck" %% "scalacheck" % "1.11.3" % "test"
   val bCrypt = "org.mindrot" % "jbcrypt" % "0.3m"
 

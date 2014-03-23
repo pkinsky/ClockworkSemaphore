@@ -23,6 +23,7 @@ import service._
 import entities._
 import utils.{FutureAuthenticatedBuilder, Utils}
 import Utils._
+import scala.util.Failure
 
 
 object AppController extends Controller with RedisServiceLayerImpl {
@@ -147,9 +148,15 @@ object AppController extends Controller with RedisServiceLayerImpl {
     implicit request => {
       val user_id = request.user
 
-      for {
+      val r = for {
         _ <- redisService.follow_user(user_id, UserId(to_follow))
       } yield Accepted
+
+      r.onComplete{
+        case Failure(t) => log.error(s"unfollow failed:\n$t")
+      }
+
+      r
     }
   }
 
@@ -157,9 +164,16 @@ object AppController extends Controller with RedisServiceLayerImpl {
     implicit request => {
       val user_id = request.user
 
-      for {
+      val r = for {
         _ <- redisService.unfollow_user(user_id, UserId(to_unfollow))
       } yield Accepted
+
+      r.onComplete{
+        case Failure(t) => log.error(s"unfollow failed:\n$t")
+      }
+
+      r
+
     }
   }
 

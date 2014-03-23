@@ -83,14 +83,17 @@ class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLay
           posts <- redisService.load_posts(posts)
           uids: Set[UserId] = posts.map( msg => msg.uid ).toSet
 
-          following <- redisService.followed_by(user_id)
+          following <- redisService.is_following(user_id)
 
           users <- Future.sequence(uids.map{ uid => for {
               username <-  redisService.get_user_name(uid)
             } yield User(uid.uid, username, following.contains(uid))
           })
-
-        } yield send(user_id)(Update(src, users.toSeq, posts))
+        } yield {
+          val update = Update(src, users.toSeq, posts)
+          log.info(s"SendMessages(src: $src, user_id: $user_id, posts: $posts) =>  $update")
+          send(user_id)(update)
+        }
 
         r.onComplete{
           case Failure(t) => log.error(s"failed to load posts $posts because $t")

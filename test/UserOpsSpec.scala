@@ -1,5 +1,5 @@
-import actors.Msg
-import service.RedisServiceImpl
+import entities.Msg
+import service.RedisServiceLayerImpl
 import scala.concurrent.ExecutionContext.Implicits.global
 import play.api.test._
 
@@ -10,7 +10,7 @@ need to ensure this is run against test redis instance, eventually. Until then m
  */
 
 
-object StringSpecification extends PlaySpecification {
+object StringSpecification extends PlaySpecification with RedisServiceLayerImpl {
 
   /*
 
@@ -80,29 +80,28 @@ object StringSpecification extends PlaySpecification {
 
    */
 
-  val redis_service = RedisServiceImpl
 
   "user ops" should {
     "register" in {
       val res = for {
-        _ <- redis_service.flushall
-        uid <- redis_service.register_user("user1", "pwd")
+        _ <- redisService.flushall
+        uid <- redisService.register_user("user1", "pwd")
       } yield uid
 
       val uid = await(res)
-      uid.forall( c => ('0' to '9').contains(c) ) should beTrue
+      uid.uid.forall( c => ('0' to '9').contains(c) ) should beTrue
     }
 
 
     "follow" in {
       val res = for {
-        _ <- redis_service.flushall
-        follower_uid <- redis_service.register_user("user1", "pwd")
-        following_uid <- redis_service.register_user("user2", "pwd")
-        _ <- redis_service.follow_user(follower_uid, following_uid)
-        following <- redis_service.get_following(follower_uid)
-        followers <- redis_service.get_followers(following_uid)
-      } yield (following.contains(follower_uid) && followers.contains(following_uid))
+        _ <- redisService.flushall
+        follower_user <- redisService.register_user("user1", "pwd")
+        followed_user <- redisService.register_user("user2", "pwd")
+        _ <- redisService.follow_user(follower_user, followed_user)
+        is_following <- redisService.is_following(follower_user)
+        followed_by <- redisService.followed_by(followed_user)
+      } yield (is_following.contains(followed_user) && followed_by.contains(follower_user))
 
       await(res) should beTrue
     }
@@ -112,23 +111,66 @@ object StringSpecification extends PlaySpecification {
       //timestamp: Long, uid: String, body: String
 
       val res = for {
-        _ <- redis_service.flushall
-        follower_uid <- redis_service.register_user("user1", "pwd")
-        following_uid <- redis_service.register_user("user2", "pwd")
-        _ <- redis_service.follow_user(follower_uid, following_uid)
-        post_id <- redis_service.post_message(following_uid, Msg(System.currentTimeMillis, following_uid, "test post"))
-        following <- redis_service.get_following(follower_uid)
-        followers <- redis_service.get_followers(following_uid)
-        follower_posts <- redis_service.get_user_posts(follower_uid)
-        following_posts <- redis_service.get_user_posts(following_uid)
+        _ <- redisService.flushall
+        follower_user <- redisService.register_user("user1", "pwd")
+        followed_user <- redisService.register_user("user2", "pwd")
+        _ <- redisService.follow_user(follower_user, followed_user)
+        post_id <- redisService.post_message(followed_user, "test post")
+        is_following <- redisService.is_following(follower_user)
+        followed_by <- redisService.followed_by(followed_user)
+        follower_user_feed <- redisService.get_user_feed(follower_user, 0)
+        followed_user_feed <- redisService.get_user_feed(followed_user, 0)
       } yield {
-        println(s"following($following_uid) posts $following_posts")
-        println(s"follower($follower_uid) posts $follower_posts")
-        follower_posts.contains(post_id) && following_posts.contains(post_id)
+        println(s"following($followed_user) posts $followed_user_feed")
+        println(s"follower($follower_user) posts $follower_user_feed")
+        follower_user_feed.contains(post_id) && followed_user_feed.contains(post_id)
       }
 
       await(res) should beTrue
     }
+
+    /*
+    register user 1. make 1 post.
+    register user 2. make 1 post. follow user 1.
+    register user 3. view global feed, check that only appropriate users are followed
+     */
+    "not have that one weird bug" in {
+
+      //timestamp: Long, uid: String, body: String
+
+      val res = for {
+        _ <- redisService.flushall
+
+        //register user 1 and make a post
+        user1 <- redisService.register_user("user1", "password")
+        post_1 <- redisService.post_message(user1, "test post 1")
+
+        //register user 2 and make a post
+        user2 <- redisService.register_user("user2", "password")
+        _ <- redisService.follow_user(user2, user1)
+        post_2 <- redisService.post_message(user1, "test post 2")
+        user2_is_following <- redisService.is_following(user2)
+        user2_followed_by <- redisService.is_following(user2)
+
+
+        //register user 2 and make a post
+        user3 <- redisService.register_user("user3", "password")
+        user3_is_following <- redisService.is_following(user3)
+        user3_followed_by <- redisService.is_following(user3)
+
+      } yield {
+        println(s"$user2 user2_is_following: $user2_is_following user2_followed_by: $user2_followed_by")
+        println(s"$user3 user3_is_following: $user3_is_following user3_followed_by: $user3_followed_by")
+        val r = user3_is_following.isEmpty && user3_followed_by.isEmpty
+        println(s"=> $r")
+        r
+      }
+
+      await(res) should beTrue
+    }
+
+
+
 
   }
 }
