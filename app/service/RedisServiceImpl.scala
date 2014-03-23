@@ -3,18 +3,14 @@ package service
 
 import java.lang.Long.parseLong
 
-
 import scala.concurrent.Future
 import scalaz.syntax.applicative.ToApplyOps
-
 
 import play.api.libs.concurrent.Execution.Implicits._
 import  scalaz._
 import  Scalaz._
 
-
 import org.mindrot.jbcrypt.BCrypt
-
 
 import actors.ApplicativeStuff._
 
