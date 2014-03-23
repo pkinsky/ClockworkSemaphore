@@ -24,8 +24,8 @@ trait RedisConfig {
 
 
   /*
-  todo: currently all commands are retried if an error is recieved by the client.
-  Could lead to double LPUSH of posts, in very rare scenarios. Consider, later
+  todo: currently all commands are retried if an error is received by the client.
+  Could lead to double LPUSH of posts, in very rare scenarios. Scredis allows per-command retry scope, use that instead
    */
 
   private val config = redisUri match{

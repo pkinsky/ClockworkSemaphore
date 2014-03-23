@@ -1,10 +1,13 @@
 package service
 
+
 import scala.concurrent.Future
-import scalaz.Equal
 import entities.{Msg, PostId, AuthToken, UserId}
 
-trait RedisService {
+
+trait RedisServiceLayer {
+
+  trait RedisService {
 
     //generate and save an AuthToken for the given UserId
     def gen_auth_token(uid: UserId): Future[AuthToken]
@@ -43,4 +46,9 @@ trait RedisService {
     def followers_of(uid: UserId): Future[Set[UserId]]
 
     def followed_by(uid: UserId): Future[Set[UserId]]
+  }
+
+  type RedisServiceLike <: RedisService
+
+  val redisService: RedisServiceLike
 }

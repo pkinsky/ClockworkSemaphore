@@ -1,4 +1,4 @@
-package service
+package utils
 
 import scala.concurrent.Future
 
@@ -15,7 +15,7 @@ object Utils {
       try{
         Future.successful( pf(to_match) )
       } catch {
-        case e => Future.failed(e)
+        case e: Throwable => Future.failed(e)
       }
     }else{
       Future.failed(Stop(fail))

@@ -1,4 +1,4 @@
-package controllers
+package utils
 
 import play.api.mvc.{Request, ActionBuilder, SimpleResult, RequestHeader}
 import scala.concurrent.{ExecutionContext, Future}

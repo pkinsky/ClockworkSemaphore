@@ -1,4 +1,4 @@
-package actors
+package utils
 
 import scala.concurrent.{Future, ExecutionContext}
 import scalaz.Applicative

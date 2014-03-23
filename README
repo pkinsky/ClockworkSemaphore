@@ -4,4 +4,4 @@ Play 2.2 application
 - Reactive single-page app using angularJS and websockets.
 - Websocket io handled server-side by Akka actors
 - Backed by redis, an in-memory key value store
-- Fully nonblocking
+- Fully nonblocking, outside of play framework and redis client internals
