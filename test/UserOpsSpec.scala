@@ -5,8 +5,8 @@ import play.api.test._
 
 
 /*
-need to ensure this is run against test redis instance, eventually. Until then manual flushall
-
+need to ensure this is only ever run against test redis instances, somehow. Until then manual flushall.
+todo: before/after cleanup tasks
  */
 
 
@@ -107,9 +107,6 @@ object StringSpecification extends PlaySpecification with RedisServiceLayerImpl 
     }
 
     "distribute posts" in {
-
-      //timestamp: Long, uid: String, body: String
-
       val res = for {
         _ <- redisService.flushall
         follower_user <- redisService.register_user("user1", "pwd")
@@ -133,11 +130,12 @@ object StringSpecification extends PlaySpecification with RedisServiceLayerImpl 
     register user 1. make 1 post.
     register user 2. make 1 post. follow user 1.
     register user 3. view global feed, check that only appropriate users are followed
+
+    UPDATE: bug is fixed, turns out user followers,
+            following were being saved to the same 2 sets,
+            due to string interpolation mistake. Still don't have a better name for this test case.
      */
     "not have that one weird bug" in {
-
-      //timestamp: Long, uid: String, body: String
-
       val res = for {
         _ <- redisService.flushall
 
