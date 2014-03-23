@@ -9,13 +9,12 @@ import scala.collection.JavaConverters._
 import play.api.Logger
 
 
-/**
- * Created by paul on 1/26/14.
- */
 trait RedisConfig {
   lazy val log = Logger("application." + this.getClass.getName)
 
-  private val redisUri = sys.env.get("REDISTOGO_URL").map(new URI(_))
+  private val redisUri: Option[URI] = sys.env.get("REDISTOGO_URL").map(new URI(_))
+
+
 
   def flushall = redis.flushAll() //calling this results in dooooom! DOOOOOM!
 
@@ -25,17 +24,18 @@ trait RedisConfig {
 
   /*
   todo: currently all commands are retried if an error is received by the client.
-  Could lead to double LPUSH of posts, in very rare scenarios. Scredis allows per-command retry scope, use that instead
+  Could lead to double LPUSH of posts, in very rare scenarios where command succeeds without ack.
+  //Scredis allows per-command retry scope, use that instead
    */
 
   private val config = redisUri match{
-    case Some(u) => defaultConfig
+    case Some(uri) => defaultConfig
       .withValue("client",
         ConfigValueFactory.fromMap(
           Map(
-            "host" -> u.getHost(),
-            "port" -> u.getPort(),
-            "password" -> "raRzMQoBfJTFtwIu",
+            "host" -> uri.getHost(),
+            "port" -> uri.getPort(),
+            "password" -> uri.getUserInfo().split(":",2)(1),
             "tries" ->  1
           ).asJava
         )
