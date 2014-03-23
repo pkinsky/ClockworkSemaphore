@@ -19,7 +19,7 @@ trait RedisConfig {
   def flushall = redis.flushAll() //calling this results in dooooom! DOOOOOM!
 
   val defaultConfig = ConfigFactory.empty
-    .withValue("async", ConfigValueFactory.fromMap(Map("auto-pipeline"->false)))
+    //.withValue("async", ConfigValueFactory.fromMap(Map("auto-pipeline"->false)))
 
 
   /*
