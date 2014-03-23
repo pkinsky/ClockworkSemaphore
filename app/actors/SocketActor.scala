@@ -49,6 +49,7 @@ class SocketActor extends Actor with RedisConfig {
   def establishConnection(uid: UserId): UserChannel = {
     //only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
     // therefore subscribe method will need to be idempotent
+    //todo: ensure that 2x users can subscribe using the same actor, move subscribe logic to service
     client.subscribe(s"${uid.uid}:feed"){
       case RMessage(channel, post_id) => channel.split(":") match {
         case Array(user_id, "feed") => self ! SendMessages("my_feed", UserId(user_id), PostId(post_id) :: Nil )
@@ -84,8 +85,6 @@ class SocketActor extends Actor with RedisConfig {
         val r = for {
           posts <- redisService.load_posts(posts)
           uids: Set[UserId] = posts.map( msg => msg.uid ).toSet
-          //oh dear god what have I done so many lambdas
-
 
           following <- redisService.followed_by(user_id)
 
@@ -99,7 +98,7 @@ class SocketActor extends Actor with RedisConfig {
 
         r.onComplete{
           case Failure(t) => log.error(s"failed to load posts $posts because $t")
-          case Success(msg) =>
+          case Success(_) =>
         }
 
     }
@@ -115,7 +114,7 @@ class SocketActor extends Actor with RedisConfig {
 
       r.onComplete{
         case Failure(t) => log.error("posting msg failed: " + t)
-        case _ =>
+        case Success(_) =>
       }
     }
 

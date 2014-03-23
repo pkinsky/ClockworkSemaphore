@@ -19,12 +19,10 @@ import akka.util.Timeout
 import actors.StartSocket
 import actors.SocketClosed
 import play.api.Routes
-import scala.util.{ Success, Failure }
 import akka.event.slf4j.Logger
+
 import service._
 import entities._
-
-import play.api.mvc.Security.{AuthenticatedRequest, AuthenticatedBuilder}
 import Utils._
 
 
@@ -38,19 +36,18 @@ object AppController extends Controller {
 
   def authenticate(req: RequestHeader): Future[UserId] = {
     for {
-      //todo: use match or else from Utils
-      token <- get_auth_token(req).map(Future(_)).getOrElse{Future.failed(Stop("auth string not found"))}
+      token <- match_or_else(get_auth_token(req), "auth string not found"){ case Some(t) => t}
       uid <- redis_service.user_from_auth_token(token)
     } yield uid
   }
 
   object Authenticated extends FutureAuthenticatedBuilder(
-    userinfo= authenticate,
-    onUnauthorized = requestHeader => Ok(views.html.app.login())
+    userinfo = authenticate,
+    onUnauthorized = requestHeader => Ok(views.html.app.landing())
   )
 
   object AuthenticatedAPI extends FutureAuthenticatedBuilder(
-    userinfo= authenticate,
+    userinfo = authenticate,
     onUnauthorized = requestHeader => Unauthorized
   )
 
@@ -90,26 +87,25 @@ object AppController extends Controller {
     password.length >= 5 &&
     password.length <= 15
 
-  def login2 = Action.async{
-    implicit request =>
 
-      //this is all getting rewritten later
-      val forminfo = request.body.asFormUrlEncoded.get
 
-      val username = forminfo("username").head
-      val password = forminfo("password").head
-      //log.info(s"login: $username / $password")
-
-      //todo: move password, username validation to util file as function returning future of unit
-      val r: Future[SimpleResult] = for {
+  //todo: fold into parse_form
+  //run basic checks on credentials without going to database: size, character set. fail if not valid.
+  private def validate_credentials(username: String, password: String): Future[Unit] =
+      for{
         _ <- predicate(valid_password(password), s"invalid password $password, should have been caught by client-side validation")
         _ <- predicate(valid_username(username), s"invalid username $username, should have been caught by client-side validation")
+      } yield ()
+
+  def login = Action.async{
+    implicit request =>
+
+      val r: Future[SimpleResult] = for {
+        (username, password) <- match_or_else(parse_form(request), "username and/or password not found"){case Some(t) => t }
+        _ <- validate_credentials(username, password)
         uid <- redis_service.login_user(username, password)
         auth <- redis_service.gen_auth_token(uid)
-      } yield {
-        //log.info(s"login $uid with $auth")
-        Redirect(routes.AppController.index).withSession( "login" -> auth.token)
-      }
+      } yield Redirect(routes.AppController.index).withSession( "login" -> auth.token)
 
       r.recover{
           case t =>
@@ -119,23 +115,28 @@ object AppController extends Controller {
 
   }
 
-  //todo: rename to landing, call login2 login
-  def login = Action {
-    Ok( views.html.app.login() )
+  def landing = Action {
+    Ok( views.html.app.landing() )
   }
+
+
+  def parse_form(request: Request[AnyContent]): Option[(String, String)] =
+    for {
+      formInfo <- request.body.asFormUrlEncoded
+      usernames <- formInfo.get("username")
+      username <- usernames.headOption
+      passwords <- formInfo.get("password")
+      password <- passwords.headOption
+    } yield (username, password)
+
 
 
   def register = Action.async{
     implicit request =>
-      //this is all getting rewritten later
-      val forminfo = request.body.asFormUrlEncoded.get
-
-      val username = forminfo("username").head
-      val password = forminfo("password").head
 
       val r: Future[SimpleResult] = for {
-        _ <- predicate(valid_password(password), s"invalid password $password, should have been caught by client-side validation")
-        _ <- predicate(valid_username(username), s"invalid username $username, should have been caught by client-side validation")
+        (username, password) <- match_or_else(parse_form(request), "username and/or password not found"){case Some(t) => t }
+        _ <- validate_credentials(username, password)
         uid <- redis_service.register_user(username, password)
         auth <- redis_service.gen_auth_token(uid)
       } yield {
