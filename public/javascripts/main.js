@@ -188,11 +188,9 @@ function AppCtrl($scope, $http, ChatService) {
                     var post_id = msg.post_id;
 
 
-                    if ($scope.current_user == msg.user_id){
+                    if ("my_feed" == update.feed) {
                         my_feed_messages.add(post_id);
                         global_feed_messages.add(post_id);
-                    }else if ("my_feed" == update.feed) {
-                        my_feed_messages.add(post_id);
                     }else if ("global_feed" == update.feed) {
                         global_feed_messages.add(post_id);
                     }
