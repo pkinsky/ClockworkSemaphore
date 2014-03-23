@@ -16,20 +16,17 @@ import actors._
 import akka.actor.Props
 import akka.pattern.ask
 import akka.util.Timeout
-import actors.StartSocket
-import actors.SocketClosed
 import play.api.Routes
 import akka.event.slf4j.Logger
 
 import service._
 import entities._
+import utils.{FutureAuthenticatedBuilder, Utils}
 import Utils._
 
 
-object AppController extends Controller {
+object AppController extends Controller with RedisServiceLayerImpl {
   lazy val log = Logger(s"application.${this.getClass.getName}")
-
-  val redis_service = RedisServiceImpl.asInstanceOf[RedisService]
 
   def get_auth_token(req: RequestHeader) =
 		req.session.get("login").map{t => AuthToken(t)}
@@ -37,7 +34,7 @@ object AppController extends Controller {
   def authenticate(req: RequestHeader): Future[UserId] = {
     for {
       token <- match_or_else(get_auth_token(req), "auth string not found"){ case Some(t) => t}
-      uid <- redis_service.user_from_auth_token(token)
+      uid <- redisService.user_from_auth_token(token)
     } yield uid
   }
 
@@ -103,8 +100,8 @@ object AppController extends Controller {
       val r: Future[SimpleResult] = for {
         (username, password) <- match_or_else(parse_form(request), "username and/or password not found"){case Some(t) => t }
         _ <- validate_credentials(username, password)
-        uid <- redis_service.login_user(username, password)
-        auth <- redis_service.gen_auth_token(uid)
+        uid <- redisService.login_user(username, password)
+        auth <- redisService.gen_auth_token(uid)
       } yield Redirect(routes.AppController.index).withSession( "login" -> auth.token)
 
       r.recover{
@@ -137,8 +134,8 @@ object AppController extends Controller {
       val r: Future[SimpleResult] = for {
         (username, password) <- match_or_else(parse_form(request), "username and/or password not found"){case Some(t) => t }
         _ <- validate_credentials(username, password)
-        uid <- redis_service.register_user(username, password)
-        auth <- redis_service.gen_auth_token(uid)
+        uid <- redisService.register_user(username, password)
+        auth <- redisService.gen_auth_token(uid)
       } yield {
         Redirect(routes.AppController.index).withSession("login" -> auth.token)
       }
@@ -151,7 +148,7 @@ object AppController extends Controller {
       val user_id = request.user
 
       for {
-        _ <- redis_service.follow_user(user_id, UserId(to_follow))
+        _ <- redisService.follow_user(user_id, UserId(to_follow))
       } yield Accepted
     }
   }
@@ -161,7 +158,7 @@ object AppController extends Controller {
       val user_id = request.user
 
       for {
-        _ <- redis_service.unfollow_user(user_id, UserId(to_unfollow))
+        _ <- redisService.unfollow_user(user_id, UserId(to_unfollow))
       } yield Accepted
     }
   }
@@ -172,7 +169,7 @@ object AppController extends Controller {
       val user_id = request.user
 
       for {
-        username <- redis_service.get_user_name(user_id)
+        username <- redisService.get_user_name(user_id)
       } yield Ok(views.html.app.index(user_id.uid, username))
     }
   }
@@ -188,30 +185,30 @@ object AppController extends Controller {
     implicit requestHeader =>
       for {
         uid <- authenticate(requestHeader)
-        enumerator <- (socketActor ? StartSocket(uid))
+        enumerator <- (socketActor ? SocketActor.StartSocket(uid))
       } yield {
         val it = Iteratee.foreach[JsValue]{
           case JsObject(Seq( ("msg", JsString(msg)) )) =>
-            socketActor ! MakePost(uid, msg)
+            socketActor ! SocketActor.MakePost(uid, msg)
 
           case JsObject(Seq( ("feed", JsString("my_feed")), ("page", JsNumber(page)))) =>
             log.info(s"load feed for user $uid page $page for user $uid")
             for {
-              feed <- redis_service.get_user_feed(uid, page.toInt)
-            } socketActor ! SendMessages("my_feed", uid, feed)
+              feed <- redisService.get_user_feed(uid, page.toInt)
+            } socketActor ! SocketActor.SendMessages("my_feed", uid, feed)
 
 
           case JsObject(Seq( ("feed", JsString("global_feed")), ("page", JsNumber(page)))) =>
             log.info(s"load global feed page $page for user $uid")
             for {
-              feed <- redis_service.get_global_feed(page.toInt)
-            } socketActor ! SendMessages("global_feed", uid, feed)
+              feed <- redisService.get_global_feed(page.toInt)
+            } socketActor ! SocketActor.SendMessages("global_feed", uid, feed)
 
 
           case js => log.error(s"  ???: received invalid jsvalue $js")
 
         }.mapDone {
-          _ => socketActor ! SocketClosed(uid)
+          _ => socketActor ! SocketActor.SocketClosed(uid)
         }
 
         (it, enumerator.asInstanceOf[Enumerator[JsValue]])

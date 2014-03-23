@@ -18,6 +18,7 @@ import service._
 
 import scredis.pubsub.{Message => RMessage}
 
+import utils.Utils
 import Utils._
 
 
@@ -25,32 +26,28 @@ import scala.util.Failure
 import play.api.libs.json._
 import scala.util.Success
 
-import ApplicativeStuff._
 import scalaz._
 
 import entities._
 
 
+class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLayerImpl {
 
-//handles websocket, listens as redis client for pubsub messages signaling new posts
-class SocketActor extends Actor with RedisConfig {
-
-  val redisService: RedisService = RedisServiceImpl
+  //this is weird, need to import from own companion object
+  import SocketActor._
 
   case class UserChannel(uid: UserId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
-  override lazy val log = Logger("application." + this.getClass.getName)
+  lazy val log = Logger("application." + this.getClass.getName)
 
-
-  // this map relate every user with his or her UserChannel
   var webSockets: Map[UserId, UserChannel] = Map.empty
 
 
   def establishConnection(uid: UserId): UserChannel = {
-    //only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
+    // only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
     // therefore subscribe method will need to be idempotent
-    //todo: ensure that 2x users can subscribe using the same actor, move subscribe logic to service
-    client.subscribe(s"${uid.uid}:feed"){
+    // todo: ensure that 2x users can subscribe using the same actor, move subscribe logic to service
+    pubSubService.subscribe(s"${uid.uid}:feed"){
       case RMessage(channel, post_id) => channel.split(":") match {
         case Array(user_id, "feed") => self ! SendMessages("my_feed", UserId(user_id), PostId(post_id) :: Nil )
         case x => log.error(s"unparseable message $x")
@@ -93,7 +90,6 @@ class SocketActor extends Actor with RedisConfig {
             } yield User(uid.uid, username, following.contains(uid))
           })
 
-
         } yield send(user_id)(Update(src, users.toSeq, posts))
 
         r.onComplete{
@@ -108,9 +104,7 @@ class SocketActor extends Actor with RedisConfig {
       val r = for {
         _ <- predicate(message.nonEmpty, s"$from attempting to post empty message")
         post_id <- redisService.post_message(from, message)
-      } yield {
-	      () //don't serialize here. use redis pubsub to handle pushing msg to recipients
-      }
+      } yield ()
 
       r.onComplete{
         case Failure(t) => log.error("posting msg failed: " + t)
@@ -127,7 +121,7 @@ class SocketActor extends Actor with RedisConfig {
           webSockets += (user_id -> userChannel)
           //log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
         } else {
-            client.unsubscribe(s"${user_id.uid}:feed")
+          pubSubService.unsubscribe(s"${user_id.uid}:feed")
             removeUserChannel(user_id)
         }
       }
@@ -137,4 +131,18 @@ class SocketActor extends Actor with RedisConfig {
     //log debug s"removed channel for $user_id"
     webSockets -= uid
   }
+}
+
+
+
+object SocketActor {
+  sealed trait SocketMessage
+
+  case class SendMessages(src: String, user_id: UserId, posts: Seq[PostId])
+
+  case class MakePost(author_uid: UserId, body: String)
+
+  case class StartSocket(uid: UserId) extends SocketMessage
+
+  case class SocketClosed(uid: UserId) extends SocketMessage
 }
