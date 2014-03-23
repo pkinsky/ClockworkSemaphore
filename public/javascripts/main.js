@@ -35,14 +35,11 @@ function StringSet() {
 }
 
 
-var app = angular.module('app', ["xeditable"]).
+var app = angular.module('app', []).
         config(function ($httpProvider) {
                    $httpProvider.defaults.withCredentials = true;
                 });
 
-app.run(function(editableOptions) {
-  editableOptions.theme = 'bs3'; // bootstrap3 theme. Can be also 'bs2', 'default'
-});
 
 app.factory('ChatService', function() {
   var service = {};
