@@ -38,6 +38,7 @@ object AppController extends Controller {
 
   def authenticate(req: RequestHeader): Future[UserId] = {
     for {
+      //todo: use match or else from Utils
       token <- get_auth_token(req).map(Future(_)).getOrElse{Future.failed(Stop("auth string not found"))}
       uid <- redis_service.user_from_auth_token(token)
     } yield uid
@@ -57,6 +58,9 @@ object AppController extends Controller {
   val socketActor = Akka.system.actorOf(Props[SocketActor])
 
 
+
+
+  //need to reserve username, uid for holmesIterator. May be best to use an actor after all, actor holding ref to iterator over file
 
   //todo: make this pass: it's a good test case, and if the system should handle it or return meaningful errors
   // also need to add user info for robo-sherlock, failing to load a user is a semi-legit reason to fail to load a post
@@ -96,6 +100,7 @@ object AppController extends Controller {
       val password = forminfo("password").head
       //log.info(s"login: $username / $password")
 
+      //todo: move password, username validation to util file as function returning future of unit
       val r: Future[SimpleResult] = for {
         _ <- predicate(valid_password(password), s"invalid password $password, should have been caught by client-side validation")
         _ <- predicate(valid_username(username), s"invalid username $username, should have been caught by client-side validation")
@@ -114,12 +119,12 @@ object AppController extends Controller {
 
   }
 
-
+  //todo: rename to landing, call login2 login
   def login = Action {
     Ok( views.html.app.login() )
   }
 
-  //todo: handle registering a reserved username gracefully
+
   def register = Action.async{
     implicit request =>
       //this is all getting rewritten later
@@ -180,11 +185,6 @@ object AppController extends Controller {
    */
   def indexWS = WebSocket.async[JsValue] {
     implicit requestHeader =>
-      val u = get_auth_token(requestHeader) match {
-        case Some(auth) => redis_service.user_from_auth_token(auth)
-        case None => Future.failed(Stop("no user for auth at websocket"))
-      }
-
       for {
         uid <- authenticate(requestHeader)
         enumerator <- (socketActor ? StartSocket(uid))

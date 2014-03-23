@@ -4,21 +4,12 @@ package service
 import java.lang.Long.parseLong
 
 
-import scredis.Redis
-import com.typesafe.config.{ConfigValueFactory, ConfigFactory}
-import actors._
 import scala.concurrent.Future
 import scalaz.syntax.applicative.ToApplyOps
-import scredis.parsing.Parser
-import play.api.libs.json._
 
-import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
 
 import play.api.libs.concurrent.Execution.Implicits._
-import scredis.exceptions.RedisParsingException
-import scala.util.{Success, Failure}
-import  scalaz._, std.option._, std.tuple._, syntax.bitraverse._
+import  scalaz._
 import  Scalaz._
 
 
@@ -72,7 +63,6 @@ object RedisServiceImpl extends RedisService with RedisConfig {
         } yield {
           log.info(s"distributing post, push ${post_id.pid} to $channel")
           client.publish(channel, post_id.pid)
-          ()
         }
 
       }
@@ -129,8 +119,8 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
     for {
       _ <- predicate(uid =/= to_unfollow, s"user $uid just tried to unfollow himself! probably a client-side bug")
-       _ <- redis.sRem(RedisSchema.followed_by(uid), to_unfollow.uid)
-       _ <- redis.sRem(RedisSchema.followers_of(to_unfollow), uid.uid)
+       _ <- (redis.sRem(RedisSchema.followed_by(uid), to_unfollow.uid) |@|
+            redis.sRem(RedisSchema.followers_of(to_unfollow), uid.uid)){ (_,_) => () }
     } yield ()
   }
 
@@ -165,8 +155,8 @@ object RedisServiceImpl extends RedisService with RedisConfig {
   def gen_auth_token(uid: UserId): Future[AuthToken] = {
     val auth = AuthToken( new scala.util.Random().nextString(15) )
     for {
-      _ <- redis.set(RedisSchema.user_auth(uid), auth.token)
-      _ <- redis.set(RedisSchema.auth_user(auth), uid.uid)
+      _ <- (redis.set(RedisSchema.user_auth(uid), auth.token) |@|
+            redis.set(RedisSchema.auth_user(auth), uid.uid)){ (_, _) => () }
     } yield auth
   }
 
@@ -211,7 +201,7 @@ object RedisServiceImpl extends RedisService with RedisConfig {
       _ <- match_or_else(uid_for_username , s"user $uid attempting to reserve taken username $username, already in use by user with uid $uid_for_username"){
         case None =>
       }
-      //use applicative syntax to dispatch futures simultaneously
+      // todo: in cases where actions are taken simultaneously, have a separate function (eg: set A => B, B => A)
       _ <- (redis.set(RedisSchema.id_to_username(uid), username) |@|
            redis.set(RedisSchema.username_to_id(username), uid.uid)){ (_,_) => ()}
     } yield ()
