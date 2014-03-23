@@ -7,14 +7,8 @@ import scala.concurrent.Future
  */
 object Utils {
 
-  def predicate(condition: => Boolean, fail: => String): Future[Unit] =
-    try {
-      val c = condition
-      if (c) Future.successful( () ) else Future.failed(Stop(fail))
-    } catch {
-      case e: Throwable => Future.failed(e)
-    }
-
+  def predicate(condition: Boolean, fail: => String): Future[Unit] =
+    if (condition) Future.successful( () ) else Future.failed(Stop(fail))
 
   def match_or_else[A, B](to_match: A, fail: => String)(pf: PartialFunction[A, B]): Future[B] =
     if (pf.isDefinedAt(to_match)){

@@ -23,7 +23,7 @@ import service._
 import entities._
 import utils.{FutureAuthenticatedBuilder, Utils}
 import Utils._
-import scala.util.Failure
+import scala.util.{Failure, Success}
 
 
 object AppController extends Controller with RedisServiceLayerImpl {
@@ -154,6 +154,7 @@ object AppController extends Controller with RedisServiceLayerImpl {
 
       r.onComplete{
         case Failure(t) => log.error(s"unfollow failed:\n$t")
+        case Success(_) =>
       }
 
       r
@@ -170,6 +171,7 @@ object AppController extends Controller with RedisServiceLayerImpl {
 
       r.onComplete{
         case Failure(t) => log.error(s"unfollow failed:\n$t")
+        case Success(_) =>
       }
 
       r

@@ -8,25 +8,25 @@ import entities.{PostId, AuthToken, UserId}
 object RedisSchema {
 
   //users following uid
-   def followed_by(uid: UserId) = s"uid:$uid:followers"
+   def followed_by(uid: UserId) = s"uid:${uid.uid}:followers"
   //users followed by uid
-   def is_following(uid: UserId) = s"uid:$uid:following"
+   def is_following(uid: UserId) = s"uid:${uid.uid}:following"
 
   //pseudonym of user identified by user_id, and vice versa
-   def id_to_username(uid: UserId) = s"uid:$uid:username"
+   def id_to_username(uid: UserId) = s"uid:${uid.uid}:username"
    def username_to_id(username: String) = s"username:$username:uid"
 
    //hashed password
-   def user_password(uid: UserId) = s"uid:$uid:password"
+   def user_password(uid: UserId) = s"uid:${uid.uid}:password"
 
    //a user's feed: all posts by them and those they are following
-   def user_posts(uid: UserId): String = s"uid:$uid:posts"
+   def user_posts(uid: UserId): String = s"uid:${uid.uid}:posts"
 
   //auth token for user id
-   def user_auth(uid: UserId): String = s"uid:$uid:auth"
+   def user_auth(uid: UserId): String = s"uid:${uid.uid}:auth"
  
   //user id for auth token
-   def auth_user(auth: AuthToken): String = s"auth:$auth:uid"
+   def auth_user(auth: AuthToken): String = s"auth:${auth.token}:uid"
 
   //list to which all posts are left-pushed
    val global_timeline = "global:timeline"
