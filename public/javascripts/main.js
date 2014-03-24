@@ -47,7 +47,7 @@ app.factory('ChatService', function() {
   function ws_url(s) {
       var l = window.location;
       var r = ((l.protocol === "https:") ? "wss://" : "ws://") + l.hostname + (((l.port != 80) && (l.port != 443)) ? ":" + l.port : "") + l.pathname + s;
-      console.log(r);
+      //console.log(r);
       return r;
   }
 
@@ -176,14 +176,14 @@ function AppCtrl($scope, $http, ChatService) {
   var my_feed_messages = new StringSet();
 
   ChatService.subscribe(function(update) {
-            console.log(update)
+            console.log("msg| =>\n" + update)
 
             update = jQuery.parseJSON(update)
 
             if ('feed' in update && 'users' in update && 'messages' in update){
 
                 update.messages.forEach( function(msg) {
-                    console.log(JSON.stringify(msg));
+                    //console.log(JSON.stringify(msg));
 
                     var post_id = msg.post_id;
 
