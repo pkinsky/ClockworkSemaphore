@@ -220,6 +220,7 @@ object AppController extends Controller with RedisServiceLayerImpl {
               feed <- redisService.get_global_feed(page.toInt)
             } socketActor ! SocketActor.SendMessages("global_feed", uid, feed)
 
+          case JsString("ping") =>
 
           case js => log.error(s"  ???: received invalid jsvalue $js")
 

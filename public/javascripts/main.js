@@ -86,6 +86,11 @@ app.factory('ChatService', function() {
 function AppCtrl($scope, $http, ChatService) {
   ChatService.connect();
 
+   setInterval(function(){
+                         console.log("send ping");
+                         ChatService.send("ping");
+                     }, 30000);
+
   //map of user_id => object describing public components of user
   $scope.init = function (current_user, username) {
     $scope.current_user = current_user;
