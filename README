@@ -5,3 +5,4 @@ Play 2.2 application
 - Websocket io handled server-side by Akka actors
 - Backed by redis, an in-memory key value store
 - Fully nonblocking, outside of play framework and redis client internals
+- Hosted on Heroku at https://clockwork-semaphore.herokuapp.com/
