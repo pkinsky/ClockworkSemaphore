@@ -176,9 +176,9 @@ function AppCtrl($scope, $http, ChatService) {
   var my_feed_messages = new StringSet();
 
   ChatService.subscribe(function(update) {
-            console.log("msg| =>\n" + update)
+            console.log("msg| =>\n" + update);
 
-            update = jQuery.parseJSON(update)
+            update = jQuery.parseJSON(update);
 
             if ('feed' in update && 'users' in update && 'messages' in update){
 
