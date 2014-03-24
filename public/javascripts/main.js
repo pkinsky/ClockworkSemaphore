@@ -123,19 +123,19 @@ function AppCtrl($scope, $http, ChatService) {
     var r = []
 
     if (feed == "my_feed") {
-        console.log("filter against stringset " + JSON.stringify(my_feed_messages.values()));
+        //console.log("filter against stringset " + JSON.stringify(my_feed_messages.values()));
         r =  _.filter(all_messages, function(elem){
-            console.log("   filter against " + JSON.stringify(elem))
+           // console.log("   filter against " + JSON.stringify(elem))
             return my_feed_messages.contains(elem.post_id)
         } );
     }
 
     if (feed == "global_feed") {
-        console.log("filter against stringset " + JSON.stringify(global_feed_messages.values()));
+        //console.log("filter against stringset " + JSON.stringify(global_feed_messages.values()));
         r =  _.filter(all_messages, function(elem){ return global_feed_messages.contains(elem.post_id) } );
     }
 
-    console.log("result is " + JSON.stringify(r) + " for feed " + feed + ", filtered from " + JSON.stringify(all_messages));
+    //console.log("result is " + JSON.stringify(r) + " for feed " + feed + ", filtered from " + JSON.stringify(all_messages));
 
     return r;
   }
@@ -148,7 +148,7 @@ function AppCtrl($scope, $http, ChatService) {
   $scope.current_user = null;
 
   $scope.unfollow_user = function(user_id) {
-        console.log("unfollow user " + user_id);
+        //console.log("unfollow user " + user_id);
         $http({ method: 'GET', url: '/user/unfollow/' + user_id }).
             success(function(data, status, headers, config) {
                   console.log("unfollowed user " + user_id + ", " + JSON.stringify(data));
@@ -161,7 +161,7 @@ function AppCtrl($scope, $http, ChatService) {
 
 
   $scope.follow_user = function(user_id) {
-        console.log("follow user " + user_id);
+        //console.log("follow user " + user_id);
         $http({ method: 'GET', url: '/user/follow/' + user_id }).
             success(function(data, status, headers, config) {
                   console.log("followed user " + user_id + ", " + JSON.stringify(data));

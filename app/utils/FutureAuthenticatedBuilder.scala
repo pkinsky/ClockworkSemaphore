@@ -30,7 +30,8 @@ class FutureAuthenticatedBuilder[U](userinfo: RequestHeader => Future[U],
       }
     } yield r).recover{
       case ex =>
-        log.error(s"error during authorization: $ex")
+        //todo: distinguish between serious errors and missing or stale auth tokens
+        log.info(s"error during authorization: $ex")
         onUnauthorized(request)
     }
 
