@@ -49,7 +49,10 @@ class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLay
     // todo: ensure that 2x users can subscribe using the same actor, move subscribe logic to service
     pubSubService.subscribe(s"${uid.uid}:feed"){
       case RMessage(channel, post_id) => channel.split(":") match {
-        case Array(user_id, "feed") => self ! SendMessages("my_feed", UserId(user_id), PostId(post_id) :: Nil )
+        case Array(user_id, "feed") => {
+          log.info(s"received message $post_id to channel $channel")
+          self ! SendMessages("my_feed", UserId(user_id), PostId(post_id) :: Nil )
+        }
         case x => log.error(s"unparseable message $x")
       }
       case _ =>
