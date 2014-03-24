@@ -26,6 +26,8 @@ GET /user/unfollow/:uid                 controllers.AppController.unfollow(uid: 
 #login flow
 GET /logout  							controllers.AppController.logout
 GET /landing  							controllers.AppController.landing
+GET /login  							controllers.AppController.landing
+GET /register  							controllers.AppController.landing
 
 POST /login       						controllers.AppController.login
 POST /register  						controllers.AppController.register

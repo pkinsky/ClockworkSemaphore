@@ -1,41 +1,20 @@
 
-TOP ISSUE: new user, other users defaulting to followed for some reason
-    -NOTE: new user, open global feed, all users are 'followed' > META-NOTE: confirmed: the json served up has isFollowed=true
-        -NOTE2: only users who have themselves followed another are followed.
-            - new users who have made posts but not followed others are not
 
-8. specs2 test cases. focus on coverage over exhaustivity, aim for initial pass over all features as quickly as possible.
-    - avoid not having test cases to point to
-    - before/after flushall. need to ensure these tests are not run on deploy to heroku
-    - WRITE TESTS TO FIND BUGS. MOVE ALL FUTURE HANDLING TO a service running over redisService,
-                such that logic can be tested without needing a play application
+<<<Look into>>>
+    weird test failures, from deep in scredis. These errors have never happened when running the app,
+    either on heroku or locally. Investigate further.
 
 
-<<<BROKEN>>>
-4. bot posters to demonstrate/test perf at scale:
+<<<BROKEN>>> (current commented-out code doesn't establish user info for poster, and so fails)
+bot posters to demonstrate/test perf at scale:
     - take a few KB of public domain stories, shakespeare, holmes, etc
     - create bot posters that loop through these
     - implement as actor that reads N lines from iterator, makes post. repeats. 
     - hound of baskerville text: http://www.gutenberg.org/cache/epub/2852/pg2852.txt
     - tweet line-by line for all nonempty lines. should ensure that direct actor->actor posts are validated 
 
-    
-6. error reporting, instead of redirect-and-log
-    - add error param to login page, defaults to none. in non-none case, show header with error
-        for convenience, only have one error bar. Show errors such as:
-            - It's safe to show simplistic errors, because I'll be double-checking for cases where client-side validation was bypassed.
-                    However, I will still try to make the errors as readable as possible.
-            - Username taken errors, for example, still needs to be delivered this way.
-            - use standard Future.failure channel where possible. 
-                Ensures all errors will be shown in known place, but internal opaque errors may be shown
-                replace all if's with _ <- predicate(...)(...) in for comprehensions
-                
-7. form handling
-    - current form handling is hacky, do better. use idiomatic play style.
-
-
-
-10. trim user feeds
+<<<todo>>>
+trim user feeds
     - goal: ensure that auto-posting bots will not use up full 25mb redis memory.
         however, posts won't go away when they leave the feed. Might just be worth dropping ~$20 on heroku non-free stuff
     - also good practice to trim feeds to 1000 as in global feeds, to avoid runaway feeds
@@ -43,10 +22,8 @@ TOP ISSUE: new user, other users defaulting to followed for some reason
         note: any write on expiring key will cause it to evaporate, leaving hanging post_id pointers
     - SIMPLEST POSSIBLE: just flush redis memory manually if it gets out of hand.
 
-
-11. final pass: there should be no section of code I am not happy showing to anyone
-
-12. writeup: description of app in readme
+<<<todo>>>
+writeup: description of app in readme
     - simple twitter clone with $features
     - what happens when a user logs in (websockets, pubsub)
     - redis features used (quick overview of redis schema, reference redis twitter case study

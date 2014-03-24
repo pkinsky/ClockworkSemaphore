@@ -138,7 +138,7 @@ trait RedisServiceLayerImpl extends RedisServiceLayer {
         uid <- match_or_else(raw_uid_opt, s"no uid for username $username"){case Some(u) => UserId(u)}
         passwordHashOpt <- redis.get(RedisSchema.user_password(uid))
         passwordHash <- match_or_else(passwordHashOpt, s"no hashed password for user $username with uid $uid"){case Some(pw) => pw}
-        _ <- predicate(BCrypt.checkpw(password, passwordHash), s"password $password doesn't match password $passwordHash")
+        _ <- predicate(BCrypt.checkpw(password, passwordHash), "password doesn't match hashed password")
       } yield uid
     }
 

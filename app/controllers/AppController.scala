@@ -41,12 +41,12 @@ object AppController extends Controller with RedisServiceLayerImpl {
 
   object Authenticated extends FutureAuthenticatedBuilder(
     userinfo = authenticate,
-    onUnauthorized = requestHeader => Ok(views.html.app.landing())
+    onUnauthorized = (requestHeader, err) => Ok(views.html.app.landing(err.map(_.toString)))
   )
 
   object AuthenticatedAPI extends FutureAuthenticatedBuilder(
     userinfo = authenticate,
-    onUnauthorized = requestHeader => Unauthorized
+    onUnauthorized = (requestHeader, err) => Unauthorized
   )
 
   implicit val timeout = Timeout(2 second)
@@ -108,13 +108,13 @@ object AppController extends Controller with RedisServiceLayerImpl {
       r.recover{
           case t =>
             log.error(s"error during login: $t");
-            Redirect(routes.AppController.index)
+            Ok(views.html.app.landing(Some(t.toString)))
         }
 
   }
 
   def landing = Action {
-    Ok( views.html.app.landing() )
+    Ok( views.html.app.landing(None) )
   }
 
 
@@ -141,7 +141,9 @@ object AppController extends Controller with RedisServiceLayerImpl {
         Redirect(routes.AppController.index).withSession("login" -> auth.token)
       }
 
-      r.recover{ case t => log.error(s"error during registration: $t"); Redirect(routes.AppController.index)}
+      r.recover{ case t =>
+        Ok(views.html.app.landing(Some(t.toString)))
+      }
   }
 
   def follow(to_follow: String) = AuthenticatedAPI.async  {

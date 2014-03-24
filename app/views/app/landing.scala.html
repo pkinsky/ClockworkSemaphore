@@ -1,4 +1,4 @@
-@()
+@(error: Option[String])
 
 @layout("Clockwork Semaphore") {
     <nav id="main-navbar" class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -8,17 +8,45 @@
     </nav>
 
 
-   <!--
-   form for username and password. use js to validate data, then send to server as a standard post. post results in login ( :) ) or redirect to this page + error ( :( )
-   todo: add default-nothing error field to this page
-   -->
-
 
 
 <div class="row">
 
     <div class="col-lg-6 col-md-6 col-sm-6">
         <div class="panel">
+
+
+
+        <!-- todo: these errors are super user unfriendly, reveal system internals (although nothing not visible by viewing angularjs state)-->
+        @for(e <- error) {
+            <div class="alert alert-danger">
+                @error
+            </div>
+        }
+
+
+
+
+            <h3>Register</h3>
+        <form class="form-horizontal" role="form" action="register" method="post">
+            <div class="form-group">
+                <label for="username_login" class="col-sm-2 control-label">Username</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="username_login" placeholder="Username"  name="username"  pattern="[0-9a-zA-Z]{5,15}"  title="Username must be between 5 and 15 alphanumeric characters"  required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="password_login" class="col-sm-2 control-label">Password</label>
+                <div class="col-sm-10">
+                    <input type="password" class="form-control" id="password_login" placeholder="Password" name="password" pattern=".{5,15}" title="Password must be between 5 and 15 characters" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-10">
+                    <button type="submit" class="btn btn-default">Register</button>
+                </div>
+            </div>
+        </form>
 
         <h3>Sign In</h3>
         <form class="form-horizontal" role="form" action="login" method="post">
@@ -37,28 +65,6 @@
             <div class="form-group">
                 <div class="col-sm-offset-2 col-sm-10">
                     <button type="submit" class="btn btn-default">Sign in</button>
-                </div>
-            </div>
-        </form>
-
-
-        <h3>Register</h3>
-        <form class="form-horizontal" role="form" action="register" method="post">
-            <div class="form-group">
-                <label for="username_login" class="col-sm-2 control-label">Username</label>
-                <div class="col-sm-10">
-                    <input type="text" class="form-control" id="username_login" placeholder="Username"  name="username"  pattern="[0-9a-zA-Z]{5,15}"  title="Username must be between 5 and 15 alphanumeric characters"  required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="password_login" class="col-sm-2 control-label">Password</label>
-                <div class="col-sm-10">
-                    <input type="password" class="form-control" id="password_login" placeholder="Password" name="password" pattern=".{5,15}" title="Password must be between 5 and 15 characters" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="col-sm-offset-2 col-sm-10">
-                    <button type="submit" class="btn btn-default">Register</button>
                 </div>
             </div>
         </form>
