@@ -8,19 +8,19 @@ import utils.Utils._
 import scala.util.Success
 import scala.util.Failure
 import scala.Some
-import service.RedisServiceLayerImpl
+import service.RedisService
 import play.api.libs.concurrent.Execution.Implicits._
 import akka.event.slf4j.Logger
 import utils.Logging
 
-object API extends Controller with RedisServiceLayerImpl with Logging {
+object API extends Controller with Logging {
 
   def follow(to_follow: String) = AuthenticatedAPI.async  {
     implicit request => {
       val user_id = request.user
 
       val r = for {
-        _ <- redisService.follow_user(user_id, UserId(to_follow))
+        _ <- RedisService.follow_user(user_id, UserId(to_follow))
       } yield Accepted
 
       r.onComplete{
@@ -39,7 +39,7 @@ object API extends Controller with RedisServiceLayerImpl with Logging {
       val user_id = request.user
 
       val r = for {
-        _ <- redisService.unfollow_user(user_id, UserId(to_unfollow))
+        _ <- RedisService.unfollow_user(user_id, UserId(to_unfollow))
       } yield Accepted
 
       r.onComplete{

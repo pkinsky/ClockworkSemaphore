@@ -34,7 +34,7 @@ trait RedisConfig {
 
   protected lazy val redis = Redis(config)
 
-  protected lazy val client = Client(config)
+  def getClient = Client(config)
 
 }
 

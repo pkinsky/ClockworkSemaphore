@@ -20,14 +20,14 @@ import utils.Utils._
 import scala.util.{Failure, Success}
 import akka.event.slf4j.Logger
 
-object App extends Controller with RedisServiceLayerImpl {
+object App extends Controller  {
 
   def index = Authenticated.async {
     implicit request => {
       val user_id = request.user
 
       for {
-        username <- redisService.get_user_name(user_id)
+        username <- RedisService.get_user_name(user_id)
       } yield Ok(views.html.app.index(user_id.uid, username))
     }
   }

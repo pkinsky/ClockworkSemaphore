@@ -1,6 +1,7 @@
 package utils
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scalaz.Applicative
 
 /**
  * Created by paul on 3/22/14.
@@ -36,7 +37,15 @@ object Utils {
       Future.failed(Predicate(fail))
     }
 
+  //errors whose reason can be displayed client-side as is. Ex: username already taken
   case class UserVisibleError(reason: String) extends Exception(s"user visible error:: $reason")
   
   case class Predicate(reason: String) extends Exception(s"predicate failed:: $reason")
+
+  //this allows us to use scalaz's applicative syntax to dispatch multiple futures concurrently
+  implicit def FutureApplicative(implicit executor: ExecutionContext) = new Applicative[Future] {
+    def point[A](a: => A) = Future(a)
+    def ap[A,B](fa: => Future[A])(f: => Future[A => B]) =
+      (f zip fa) map { case (f1, a1) => f1(a1) }
+  }
 }

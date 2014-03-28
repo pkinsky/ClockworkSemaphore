@@ -8,7 +8,7 @@ import scala.Some
 import utils.Utils.UserVisibleError
 import scala.Some
 import play.api.mvc.SimpleResult
-import service.RedisServiceLayerImpl
+import service.RedisService
 import akka.event.slf4j.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import akka.event.slf4j.Logger
@@ -16,7 +16,7 @@ import akka.event.slf4j.Logger
 /**
  * Created by paul on 3/26/14.
  */
-object LandingPage extends Controller with RedisServiceLayerImpl {
+object LandingPage extends Controller {
 
   val alphanumeric: Set[Char] = (('0' to '9') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
 
@@ -46,8 +46,8 @@ object LandingPage extends Controller with RedisServiceLayerImpl {
       val r: Future[SimpleResult] = for {
         (username, password) <- match_or_else(parse_form(request), "username and/or password not found"){case Some(t) => t }
         _ <- validate_credentials(username, password)
-        uid <- redisService.login_user(username, password)
-        auth <- redisService.gen_auth_token(uid)
+        uid <- RedisService.login_user(username, password)
+        auth <- RedisService.gen_auth_token(uid)
       } yield Redirect(routes.App.index).withSession( "login" -> auth.token)
 
       r.recover{
@@ -81,8 +81,8 @@ object LandingPage extends Controller with RedisServiceLayerImpl {
       val r: Future[SimpleResult] = for {
         (username, password) <- match_or_else(parse_form(request), "username and/or password not found"){case Some(t) => t }
         _ <- validate_credentials(username, password)
-        uid <- redisService.register_user(username, password)
-        auth <- redisService.gen_auth_token(uid)
+        uid <- RedisService.register_user(username, password)
+        auth <- RedisService.gen_auth_token(uid)
       } yield {
         Redirect(routes.App.index).withSession("login" -> auth.token)
       }

@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.mvc.{WebSocket => PlayWS, RequestHeader, Controller}
-import service.RedisServiceLayerImpl
+import service.RedisService
 import play.api.libs.json._
 import actors.SocketActor
 import play.api.libs.iteratee.{Enumerator, Iteratee}
@@ -26,23 +26,12 @@ import play.api.Play.current
 import akka.actor.Props
 import akka.pattern.ask
 import akka.event.slf4j.Logger
+import utils.Logging
 
-object WebSocket extends Controller with RedisServiceLayerImpl  {
+object WebSocket extends Controller with Logging {
 
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
-
-  def get_auth_token(req: RequestHeader) =
-    req.session.get("login").map{t => AuthToken(t)}
-
-  // todo: ...duplicate code :(
-  def authenticate(req: RequestHeader): Future[UserId] = {
-    for {
-      token <- match_or_else(get_auth_token(req), "auth string not found"){ case Some(t) => t}
-      uid <- redisService.user_from_auth_token(token)
-    } yield uid
-  }
-
   /**
    * This function creates a WebSocket using the
    * enumerator linked to the current user,
@@ -51,7 +40,7 @@ object WebSocket extends Controller with RedisServiceLayerImpl  {
   def indexWS = PlayWS.async[JsValue] {
     implicit requestHeader =>
       for {
-        uid <- authenticate(requestHeader)
+        uid <- Auth.authenticateRequest(requestHeader)
         enumerator <- (socketActor ? SocketActor.StartSocket(uid))
       } yield {
         val it = Iteratee.foreach[JsValue]{
@@ -61,14 +50,14 @@ object WebSocket extends Controller with RedisServiceLayerImpl  {
           case JsObject(Seq( ("feed", JsString("my_feed")), ("page", JsNumber(page)))) =>
             log.info(s"load feed for user $uid page $page for user $uid")
             for {
-              feed <- redisService.get_user_feed(uid, page.toInt)
+              feed <- RedisService.get_user_feed(uid, page.toInt)
             } socketActor ! SocketActor.SendMessages("my_feed", uid, feed)
 
 
           case JsObject(Seq( ("feed", JsString("global_feed")), ("page", JsNumber(page)))) =>
             log.info(s"load global feed page $page for user $uid")
             for {
-              feed <- redisService.get_global_feed(page.toInt)
+              feed <- RedisService.get_global_feed(page.toInt)
             } socketActor ! SocketActor.SendMessages("global_feed", uid, feed)
 
           case JsString("ping") =>

@@ -1,5 +1,5 @@
 import entities.Msg
-import service.RedisServiceLayerImpl
+import service.RedisService
 import scala.concurrent.ExecutionContext.Implicits.global
 import play.api.test._
 
@@ -10,7 +10,7 @@ todo: before/after cleanup tasks
  */
 
 
-object StringSpecification extends PlaySpecification with RedisServiceLayerImpl {
+object StringSpecification extends PlaySpecification  {
 
   /*
 
@@ -84,8 +84,8 @@ object StringSpecification extends PlaySpecification with RedisServiceLayerImpl 
   "user ops" should {
     "register" in {
       val res = for {
-        _ <- redisService.flushall
-        uid <- redisService.register_user("user1", "pwd")
+        _ <- RedisService.flushall
+        uid <- RedisService.register_user("user1", "pwd")
       } yield uid
 
       val uid = await(res)
@@ -95,12 +95,12 @@ object StringSpecification extends PlaySpecification with RedisServiceLayerImpl 
 
     "follow" in {
       val res = for {
-        _ <- redisService.flushall
-        follower_user <- redisService.register_user("user1", "pwd")
-        followed_user <- redisService.register_user("user2", "pwd")
-        _ <- redisService.follow_user(follower_user, followed_user)
-        is_following <- redisService.is_following(follower_user)
-        followed_by <- redisService.followed_by(followed_user)
+        _ <- RedisService.flushall
+        follower_user <- RedisService.register_user("user1", "pwd")
+        followed_user <- RedisService.register_user("user2", "pwd")
+        _ <- RedisService.follow_user(follower_user, followed_user)
+        is_following <- RedisService.is_following(follower_user)
+        followed_by <- RedisService.followed_by(followed_user)
       } yield (is_following.contains(followed_user) && followed_by.contains(follower_user))
 
       await(res) should beTrue
@@ -108,15 +108,15 @@ object StringSpecification extends PlaySpecification with RedisServiceLayerImpl 
 
     "distribute posts" in {
       val res = for {
-        _ <- redisService.flushall
-        follower_user <- redisService.register_user("user1", "pwd")
-        followed_user <- redisService.register_user("user2", "pwd")
-        _ <- redisService.follow_user(follower_user, followed_user)
-        post_id <- redisService.post_message(followed_user, "test post")
-        is_following <- redisService.is_following(follower_user)
-        followed_by <- redisService.followed_by(followed_user)
-        follower_user_feed <- redisService.get_user_feed(follower_user, 0)
-        followed_user_feed <- redisService.get_user_feed(followed_user, 0)
+        _ <- RedisService.flushall
+        follower_user <- RedisService.register_user("user1", "pwd")
+        followed_user <- RedisService.register_user("user2", "pwd")
+        _ <- RedisService.follow_user(follower_user, followed_user)
+        post_id <- RedisService.post_message(followed_user, "test post")
+        is_following <- RedisService.is_following(follower_user)
+        followed_by <- RedisService.followed_by(followed_user)
+        follower_user_feed <- RedisService.get_user_feed(follower_user, 0)
+        followed_user_feed <- RedisService.get_user_feed(followed_user, 0)
       } yield {
         println(s"following($followed_user) posts $followed_user_feed")
         println(s"follower($follower_user) posts $follower_user_feed")
@@ -137,24 +137,24 @@ object StringSpecification extends PlaySpecification with RedisServiceLayerImpl 
      */
     "not have that one weird bug" in {
       val res = for {
-        _ <- redisService.flushall
+        _ <- RedisService.flushall
 
         //register user 1 and make a post
-        user1 <- redisService.register_user("user1", "password")
-        post_1 <- redisService.post_message(user1, "test post 1")
+        user1 <- RedisService.register_user("user1", "password")
+        post_1 <- RedisService.post_message(user1, "test post 1")
 
         //register user 2 and make a post
-        user2 <- redisService.register_user("user2", "password")
-        _ <- redisService.follow_user(user2, user1)
-        post_2 <- redisService.post_message(user1, "test post 2")
-        user2_is_following <- redisService.is_following(user2)
-        user2_followed_by <- redisService.is_following(user2)
+        user2 <- RedisService.register_user("user2", "password")
+        _ <- RedisService.follow_user(user2, user1)
+        post_2 <- RedisService.post_message(user1, "test post 2")
+        user2_is_following <- RedisService.is_following(user2)
+        user2_followed_by <- RedisService.is_following(user2)
 
 
         //register user 2 and make a post
-        user3 <- redisService.register_user("user3", "password")
-        user3_is_following <- redisService.is_following(user3)
-        user3_followed_by <- redisService.is_following(user3)
+        user3 <- RedisService.register_user("user3", "password")
+        user3_is_following <- RedisService.is_following(user3)
+        user3_followed_by <- RedisService.is_following(user3)
 
       } yield {
         println(s"$user2 user2_is_following: $user2_is_following user2_followed_by: $user2_followed_by")

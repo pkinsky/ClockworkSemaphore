@@ -12,19 +12,12 @@ import  Scalaz._
 
 import org.mindrot.jbcrypt.BCrypt
 
-import utils.{Logging, ApplicativeFuture, Utils}
-import ApplicativeFuture._
+import utils.{Logging, Utils}
 import Utils._
 import entities._
 
 
-trait RedisServiceLayerImpl extends RedisServiceLayer with Logging{
-
-  override val redisService = new RedisServiceImpl()
-
-  type RedisServiceLike = RedisServiceImpl
-
-  class RedisServiceImpl extends RedisService with RedisConfig {
+object RedisService extends RedisConfig with Logging {
 
     def load_post(post_id: PostId): Future[Option[Msg]] = {
       for {
@@ -61,12 +54,8 @@ trait RedisServiceLayerImpl extends RedisServiceLayer with Logging{
 
           for {
             _ <- redis.lPush(RedisSchema.user_posts(recipient), post_id.pid)
-            channel = s"${recipient.uid}:feed"
-          } yield {
-            log.info(s"distributing post, push ${post_id.pid} to $channel")
-            println(s"client.publish(${channel}, ${post_id.pid})")
-            client.publish(channel, post_id.pid)
-          }
+            _ <- redis.publish(s"${recipient.uid}:feed", post_id.pid)
+          } yield ()
 
         }
         _ <- Future.sequence(distribution)
@@ -212,10 +201,6 @@ trait RedisServiceLayerImpl extends RedisServiceLayer with Logging{
       } yield ()
 
     }
-
-
-  }
-
 
 }
 

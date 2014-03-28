@@ -32,22 +32,26 @@ import entities._
 
 
 
-class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLayerImpl with Logging {
-
-  //this is weird, need to import from own companion object
-  import SocketActor._
+class SocketActor extends Actor with Logging {
+  import SocketActor._ //import messages from companion object
 
   case class UserChannel(uid: UserId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
-
   var webSockets: Map[UserId, UserChannel] = Map.empty
+
+
+  //akka actors are single threaded, so we can grab our own redis client to handle subscriptions
+  val client = RedisService.getClient
+
+  override def postStop(): Unit = client.quit()
 
 
   def establishConnection(uid: UserId): UserChannel = {
     // only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
     // therefore subscribe method will need to be idempotent
     // todo: ensure that 2x users can subscribe using the same actor, move subscribe logic to service
-    pubSubService.subscribe(s"${uid.uid}:feed"){
+
+    client.subscribe(s"${uid.uid}:feed"){
       case RMessage(channel, post_id) => channel.split(":") match {
         case Array(user_id, "feed") => {
           log.info(s"received message $post_id to channel $channel")
@@ -83,13 +87,13 @@ class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLay
     case SendMessages(src, user_id, posts) => {
 
         val r = for {
-          posts <- redisService.load_posts(posts)
+          posts <- RedisService.load_posts(posts)
+          following <- RedisService.is_following(user_id)
+
+          //load user info for each unique user in the loaded posts
           uids: Set[UserId] = posts.map( msg => msg.uid ).toSet
-
-          following <- redisService.is_following(user_id)
-
           users <- Future.sequence(uids.map{ uid => for {
-              username <-  redisService.get_user_name(uid)
+              username <-  RedisService.get_user_name(uid)
             } yield User(uid.uid, username, following.contains(uid))
           })
         } yield {
@@ -109,7 +113,7 @@ class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLay
 
       val r = for {
         _ <- predicate(message.nonEmpty, s"$from attempting to post empty message")
-        post_id <- redisService.post_message(from, message)
+        post_id <- RedisService.post_message(from, message)
       } yield ()
 
       r.onComplete{
@@ -127,7 +131,7 @@ class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLay
           webSockets += (user_id -> userChannel)
           //log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
         } else {
-          pubSubService.unsubscribe(s"${user_id.uid}:feed")
+          client.unsubscribe(s"${user_id.uid}:feed")
             removeUserChannel(user_id)
         }
       }
