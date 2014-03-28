@@ -18,7 +18,7 @@ import service._
 
 import scredis.pubsub.{Message => RMessage}
 
-import utils.Utils
+import utils.{Utils, Logging}
 import Utils._
 
 
@@ -31,14 +31,14 @@ import scalaz._
 import entities._
 
 
-class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLayerImpl {
+
+class SocketActor extends Actor with RedisServiceLayerImpl with PubSubServiceLayerImpl with Logging {
 
   //this is weird, need to import from own companion object
   import SocketActor._
 
   case class UserChannel(uid: UserId, var channelsCount: Int, enumerator: Enumerator[JsValue], channel: Channel[JsValue])
 
-  lazy val log = Logger("application." + this.getClass.getName)
 
   var webSockets: Map[UserId, UserChannel] = Map.empty
 

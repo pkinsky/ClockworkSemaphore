@@ -12,14 +12,13 @@ import  Scalaz._
 
 import org.mindrot.jbcrypt.BCrypt
 
-import utils.{ApplicativeStuff, Utils}
-import ApplicativeStuff._
-import utils.Utils
+import utils.{Logging, ApplicativeFuture, Utils}
+import ApplicativeFuture._
 import Utils._
 import entities._
 
 
-trait RedisServiceLayerImpl extends RedisServiceLayer {
+trait RedisServiceLayerImpl extends RedisServiceLayer with Logging{
 
   override val redisService = new RedisServiceImpl()
 
@@ -86,7 +85,6 @@ trait RedisServiceLayerImpl extends RedisServiceLayer {
           |@| distribute_post(author, post_id)
           ){ (a,b,c) => () }
       }
-
 
       for {
         post_id <- redis.incr(RedisSchema.next_post_id).map(id => PostId(id.toString))

@@ -3,26 +3,9 @@
 <<<Look into>>>
     weird test failures, from deep in scredis. These errors have never happened when running the app,
     either on heroku or locally. Investigate further.
+    --Hypothesis: generating pubsub messages that get parsed weirdly when no clients are active
 
 
-<<<BROKEN>>> (current commented-out code doesn't establish user info for poster, and so fails)
-bot posters to demonstrate/test perf at scale:
-    - take a few KB of public domain stories, shakespeare, holmes, etc
-    - create bot posters that loop through these
-    - implement as actor that reads N lines from iterator, makes post. repeats. 
-    - hound of baskerville text: http://www.gutenberg.org/cache/epub/2852/pg2852.txt
-    - tweet line-by line for all nonempty lines. should ensure that direct actor->actor posts are validated 
-
-<<<todo>>>
-trim user feeds
-    - goal: ensure that auto-posting bots will not use up full 25mb redis memory.
-        however, posts won't go away when they leave the feed. Might just be worth dropping ~$20 on heroku non-free stuff
-    - also good practice to trim feeds to 1000 as in global feeds, to avoid runaway feeds
-    -could just set posts to expire after N days, let's say 2 because deal with it.
-        note: any write on expiring key will cause it to evaporate, leaving hanging post_id pointers
-    - SIMPLEST POSSIBLE: just flush redis memory manually if it gets out of hand.
-
-<<<todo>>>
 writeup: description of app in readme
     - simple twitter clone with $features
     - what happens when a user logs in (websockets, pubsub)

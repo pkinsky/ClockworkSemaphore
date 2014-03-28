@@ -4,7 +4,7 @@ import scala.concurrent.{Future, ExecutionContext}
 import scalaz.Applicative
 
 
-object ApplicativeStuff {
+object ApplicativeFuture {
 
   implicit def FutureApplicative(implicit executor: ExecutionContext) = new Applicative[Future] {
     def point[A](a: => A) = Future(a)

@@ -2,32 +2,29 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-# Tasks
-GET     /                           controllers.AppController.index
-GET     /websocket/                 controllers.AppController.indexWS
+# Main page, requires valid auth token in request header
+GET     /                           controllers.App.index
+
+# Websocket, requires valid auth token in request header
+GET     /websocket/                 controllers.WebSocket.indexWS
 
 
 # Map static resources from the /public folder to the /assets URL path
-GET     /assets/javascripts/routes  controllers.AppController.javascriptRoutes
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
 
 
-#api access routes, all wrapped in authorized
-#user-level operations
-GET /user/follow/:uid                   controllers.AppController.follow(uid: String)
-GET /user/unfollow/:uid                 controllers.AppController.unfollow(uid: String)
+# API access routes, require valid auth token in request header
+GET /user/follow/:uid                   controllers.API.follow(uid: String)
+GET /user/unfollow/:uid                 controllers.API.unfollow(uid: String)
 
 
 
+# Signup and Registration flow, no auth token required
+GET /logout  							controllers.LandingPage.logout
+GET /landing  							controllers.LandingPage.landing
+GET /login  							controllers.LandingPage.landing
+GET /register  							controllers.LandingPage.landing
 
-
-
-#login flow
-GET /logout  							controllers.AppController.logout
-GET /landing  							controllers.AppController.landing
-GET /login  							controllers.AppController.landing
-GET /register  							controllers.AppController.landing
-
-POST /login       						controllers.AppController.login
-POST /register  						controllers.AppController.register
+POST /login       						controllers.LandingPage.login
+POST /register  						controllers.LandingPage.register
