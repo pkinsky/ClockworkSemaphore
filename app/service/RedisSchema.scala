@@ -2,9 +2,10 @@ package service
 
 import entities.{PostId, AuthToken, UserId}
 
+
 /**
- * Created by paul on 1/26/14.
- */
+* Encapsulates generation of redis keys from domain objects
+**/
 object RedisSchema {
 
   //users following uid
@@ -24,7 +25,7 @@ object RedisSchema {
 
   //auth token for user id
    def user_auth(uid: UserId): String = s"uid:${uid.uid}:auth"
- 
+
   //user id for auth token
    def auth_user(auth: AuthToken): String = s"auth:${auth.token}:uid"
 

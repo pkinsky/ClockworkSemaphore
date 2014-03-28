@@ -13,9 +13,6 @@ import akka.event.slf4j.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import akka.event.slf4j.Logger
 
-/**
- * Created by paul on 3/26/14.
- */
 object LandingPage extends Controller {
 
   val alphanumeric: Set[Char] = (('0' to '9') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet

@@ -1,8 +1,7 @@
 package entities
 
 /**
- * Created by paul on 3/22/14.
+ * marker trait for classes with implicit JSON converters in their companion objects
  */
-class JsonMessage {
-
+trait JsonMessage {
 }
