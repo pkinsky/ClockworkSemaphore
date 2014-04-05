@@ -39,12 +39,10 @@ class SocketActor extends Actor with Logging {
 
   var webSockets: Map[UserId, UserChannel] = Map.empty
 
-
   //akka actors are single threaded, so we can grab our own redis client to handle subscriptions
   val client = RedisService.getClient
 
   override def postStop(): Unit = client.quit()
-
 
   def establishConnection(uid: UserId): UserChannel = {
     // only the first partial function here is registered as a callback, but subsequent subscribe requests still subscribe.
@@ -84,6 +82,7 @@ class SocketActor extends Actor with Logging {
         sender ! userChannel.enumerator
     }
 
+    // Request that messages with post id's in posts be sent to user user_id, associated with feed src
     case SendMessages(src, user_id, posts) => {
 
         val r = for {
@@ -123,13 +122,11 @@ class SocketActor extends Actor with Logging {
     }
 
     case SocketClosed(user_id) => {
-        //log debug s"closed socket for $user_id"
         val userChannel = webSockets(user_id)
 
         if (userChannel.channelsCount > 1) {
           userChannel.channelsCount = userChannel.channelsCount - 1
           webSockets += (user_id -> userChannel)
-          //log debug s"channel for user : $user_id count : ${userChannel.channelsCount}"
         } else {
           client.unsubscribe(s"${user_id.uid}:feed")
             removeUserChannel(user_id)
@@ -138,21 +135,42 @@ class SocketActor extends Actor with Logging {
   }
 
   def removeUserChannel(uid: UserId) = {
-    //log debug s"removed channel for $user_id"
     webSockets -= uid
   }
 }
 
 
-
+/**
+ * Companion object of SocketActor. holds all messages accepted by SocketActor
+ */
 object SocketActor {
   sealed trait SocketMessage
 
-  case class SendMessages(src: String, user_id: UserId, posts: Seq[PostId])
+  /**
+   * Deliver existing messages to a user via their websocket connection
+   * @param src global_feed or my_feed.
+   * @param user_id user to deliver the messages to
+   * @param posts sequence of post id's which should be loaded and sent to user_id
+   */
+  case class SendMessages(src: String, user_id: UserId, posts: Seq[PostId]) extends SocketMessage
 
-  case class MakePost(author_uid: UserId, body: String)
+  /**
+   * Persist and distribute a message
+   * @param author_uid ui of the user making this post
+   * @param body body of the message
+   */
+  case class MakePost(author_uid: UserId, body: String) extends SocketMessage
 
+  /**
+   * establish a websocket connection and return an Enumerator[JsValue] to the sender of this message.
+   * start listening for updates to that user's feed
+   * @param uid user id with which to associate this websocket
+   */
   case class StartSocket(uid: UserId) extends SocketMessage
 
+  /**
+   * terminate a user's websocket connection and stop listening for updates to that user's feed
+   * @param uid user id with which to associate this websocket
+   */
   case class SocketClosed(uid: UserId) extends SocketMessage
 }

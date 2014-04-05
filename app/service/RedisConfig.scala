@@ -8,11 +8,15 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
 
+
 trait RedisConfig {
 
   private val redisUri: Option[URI] = sys.env.get("REDISTOGO_URL").map(new URI(_))
 
-  def flushall = redis.flushAll() //calling this results in dooooom! DOOOOOM!
+    /** calling this results in dooooom! DOOOOOM!
+     *  (flushes current redis config. Do not call from non-test code)
+     */
+  def flushall = redis.flushAll()
 
   val defaultConfig = ConfigFactory.empty
 

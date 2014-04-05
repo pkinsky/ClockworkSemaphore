@@ -16,7 +16,10 @@ import utils.{Logging, Utils}
 import Utils._
 import entities._
 
-
+/**
+ * Global object, handles actual interaction with Redis.
+ * All methods are non-blocking and thread safe.
+ */
 object RedisService extends RedisConfig with Logging {
 
     def load_post(post_id: PostId): Future[Option[Msg]] = {

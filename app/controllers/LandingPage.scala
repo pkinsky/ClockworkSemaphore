@@ -13,29 +13,40 @@ import akka.event.slf4j.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import akka.event.slf4j.Logger
 
+
+/**
+ * Landing page. Unauthenticated users are redirected here.
+ * Handles login, registration, logout flow
+ */
 object LandingPage extends Controller {
 
   val alphanumeric: Set[Char] = (('0' to '9') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
 
+  val username_length = (5 to 15)
+  val password_length = (5 to 15)
+
   //todo: move sizes to config file or something
   def valid_username(username: String): Boolean =
-    username.length >= 5 &&
-      username.length <= 15 &&
-      username.forall( c => alphanumeric.contains(c) )
+    username_length.contains(username.length) &&
+    username.forall( c => alphanumeric.contains(c) )
 
   def valid_password(password: String): Boolean =
-    password.length >= 5 &&
-      password.length <= 15
+    password_length.contains(username.length)
 
 
-
-  //todo: fold into parse_form
-  //run basic checks on credentials without going to database: size, character set. fail if not valid.
+  /**
+   * check that credentials are of valid form before going to the database.
+   * @param username username string
+   * @param password password string
+   * @return
+   */
   private def validate_credentials(username: String, password: String): Future[Unit] =
     for{
       _ <- predicate(valid_password(password), UserVisibleError(s"invalid password, should have been caught by client-side validation"))
       _ <- predicate(valid_username(username), UserVisibleError(s"invalid username $username, should have been caught by client-side validation"))
     } yield ()
+
+
 
   def login = Action.async{
     implicit request =>
@@ -61,6 +72,11 @@ object LandingPage extends Controller {
   }
 
 
+  /**
+   * parses a request with a form url encoded body
+   * @param request the request
+   * @return Some (username, password) tuple retrieved from request or None
+   */
   def parse_form(request: Request[AnyContent]): Option[(String, String)] =
     for {
       formInfo <- request.body.asFormUrlEncoded
@@ -92,5 +108,6 @@ object LandingPage extends Controller {
       }
   }
 
+  //logout, removing session cookie
   def logout() = Action { Redirect(routes.App.index).withSession() }
 }

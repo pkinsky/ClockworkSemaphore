@@ -28,15 +28,15 @@ import akka.pattern.ask
 import akka.event.slf4j.Logger
 import utils.Logging
 
+
+/**
+ * Provisions authorized users with web sockets.
+ */
 object WebSocket extends Controller with Logging {
 
   implicit val timeout = Timeout(2 second)
   val socketActor = Akka.system.actorOf(Props[SocketActor])
-  /**
-   * This function creates a WebSocket using the
-   * enumerator linked to the current user,
-   * retrieved from the TaskActor.
-   */
+
   def indexWS = PlayWS.async[JsValue] {
     implicit requestHeader =>
       for {

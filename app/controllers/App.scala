@@ -20,6 +20,9 @@ import utils.Utils._
 import scala.util.{Failure, Success}
 import akka.event.slf4j.Logger
 
+/**
+ * Controller for the single-page app.
+ */
 object App extends Controller  {
 
   def index = Authenticated.async {

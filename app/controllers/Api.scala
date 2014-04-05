@@ -13,8 +13,15 @@ import play.api.libs.concurrent.Execution.Implicits._
 import akka.event.slf4j.Logger
 import utils.Logging
 
+
+/**
+ * Controller handling REST API interactions
+ */
 object API extends Controller with Logging {
 
+  /**
+   * as an authenticated user, follow the user with UID to_follow. Idempotent.
+   */
   def follow(to_follow: String) = AuthenticatedAPI.async  {
     implicit request => {
       val user_id = request.user
@@ -33,7 +40,9 @@ object API extends Controller with Logging {
   }
 
 
-
+  /**
+   * as an authenticated user, unfollow the user with UID to_unfollow. Idempotent.
+   */
   def unfollow(to_unfollow: String) = AuthenticatedAPI.async  {
     implicit request => {
       val user_id = request.user

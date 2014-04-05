@@ -8,37 +8,38 @@ import entities.{PostId, AuthToken, UserId}
 **/
 object RedisSchema {
 
-  //users following uid
+  // set of users followed by uid
    def followed_by(uid: UserId) = s"uid:${uid.uid}:followers"
-  //users followed by uid
+
+  // set of users following uid
    def is_following(uid: UserId) = s"uid:${uid.uid}:following"
 
   //pseudonym of user identified by user_id, and vice versa
    def id_to_username(uid: UserId) = s"uid:${uid.uid}:username"
    def username_to_id(username: String) = s"username:$username:uid"
 
-   //hashed password
+   //hashed password for uid
    def user_password(uid: UserId) = s"uid:${uid.uid}:password"
 
-   //a user's feed: all posts by them and those they are following
+   //a user's feed: all posts by them and users they follow
    def user_posts(uid: UserId): String = s"uid:${uid.uid}:posts"
 
-  //auth token for user id
+  //auth token for uid
    def user_auth(uid: UserId): String = s"uid:${uid.uid}:auth"
 
-  //user id for auth token
+  //uid for auth token
    def auth_user(auth: AuthToken): String = s"auth:${auth.token}:uid"
 
   //list to which all posts are left-pushed
    val global_timeline = "global:timeline"
 
-  //global unique post id, increment to atomically get a post id
+  //global unique post id, increment to get a new post id
    def next_post_id = "global:nextPostId"
 
-  //global unique post id, increment to get a user id
+  //global unique user id, increment to get a new user id
    def next_user_id = "global:nextUserId"
 
-  //info about post identified by post_id
+  //map containing attributes of post with post_id
    def post_info(post: PostId) = s"post:${post.pid}:info"
 
 }

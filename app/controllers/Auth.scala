@@ -14,6 +14,10 @@ import play.api.mvc.Results.{Unauthorized, Ok}
 import play.api.libs.concurrent.Execution.Implicits._
 import utils.Logging
 
+
+/**
+ * handles mapping RequestHeader => Future[UserId]
+ */
 object Auth {
 
   def get_auth_token(req: RequestHeader) =
@@ -28,14 +32,17 @@ object Auth {
 
 }
 
+//Authenticate or return 401 unauthorized. For use with APIs
 object AuthenticatedAPI extends FutureAuthenticatedBuilder (
   onUnauthorized = (requestHeader, err) => Unauthorized
 )
 
+//Authenticate or redirect to the landing page
 object Authenticated extends FutureAuthenticatedBuilder(
   onUnauthorized = (requestHeader, err) => Ok(views.html.app.landing(err.map(_.toString)))
 )
 
+//Utility class for building authenticated requests. Based on AuthenticatedBuilder
 class FutureAuthenticatedBuilder(onUnauthorized: (RequestHeader, Option[Throwable]) => SimpleResult)
   extends ActionBuilder[({ type R[A] = AuthenticatedRequest[A, UserId] })#R] with Logging {
 
