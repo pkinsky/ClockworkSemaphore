@@ -3,16 +3,8 @@ package utils
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.Applicative
 
-/**
- * Created by paul on 3/22/14.
- */
-object Utils {
 
-  /*
-    The arguments to predicate should be call-by-name, so they can remain unevaluated if condition is true
-    However, the compiler converts call-by-name parameters of type T with Function0[T],
-    and type erasure rears its ugly head once again
-   */
+object Utils {
 
   /**
    * Predicate is used in place of an if statement in for comprehensions over futures.
@@ -23,7 +15,7 @@ object Utils {
    * @return an empty preevaluated future
    */
   def predicate(condition: Boolean, fail: String): Future[Unit] =
-    if (condition) Future.successful( () ) else Future.failed(Predicate(fail))
+    if (condition) Future.successful(Unit) else Future.failed(Predicate(fail))
 
   /**
    * Predicate is used in place of an if statement in for comprehensions over futures.
@@ -34,7 +26,7 @@ object Utils {
    * @return an empty preevaluated future
    */
   def predicate(condition: Boolean, fail: Throwable): Future[Unit] =
-    if (condition) Future.successful( () ) else Future.failed(fail)
+    if (condition) Future.successful(Unit) else Future.failed(fail)
 
   /**
    * match_or_else is used in place of pattern matching in for comprehensions over futures.
