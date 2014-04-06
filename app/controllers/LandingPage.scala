@@ -31,7 +31,7 @@ object LandingPage extends Controller {
     username.forall( c => alphanumeric.contains(c) )
 
   def valid_password(password: String): Boolean =
-    password_length.contains(username.length)
+    password_length.contains(password.length)
 
 
   /**
