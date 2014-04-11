@@ -1,12 +1,18 @@
+
+<!--
+todo: add initial page echoing app description, with list of pages to follow. Also link to redis case study
+
+todo: state that tutorial pages are starting points, bulk of documentation is inline in files linked from tutorial pages
+-->
+
+
 <div>
-<h2>
-Controllers and Views
-</h2>
+<h2>Main page</h2>
 
 
-<h3>Main page</h3>
-<br>
 Users can view their personal feed, view the global feed, post tweets and favorite/unfavorite other users from here. This page is made up of several components.
+
+<br>
 <ul>
 <li>
 <a href="#code/app/views/app/index.scala.html" class="shortcut">index.scala.html</a>:
@@ -37,13 +43,15 @@ Users can view their personal feed, view the global feed, post tweets and favori
     Request builders used to ensure only authorized users can access the above components. Encapsulates authorization logic
 </li>
 </ul>
+</div>
 
+<div>
+<h2>Landing page</h2>
 
-<h3>Landing page</h3><br>
-<ul>
-<li>
 Users without authorization cookies are redirected to this static page, where they can either login to their existing accounts or register a new account.
-</li>
+
+<br>
+<ul>
 <li>
 <a href="#code/app/controllers/LandingPage.scala" class="shortcut">LandingPage.scala</a>
     controller which handles login, logout and registration
