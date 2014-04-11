@@ -7,6 +7,12 @@ import play.api.test._
 /*
 need to ensure this is only ever run against test redis instances, somehow. Until then manual flushall.
 todo: before/after cleanup tasks
+
+Look into:
+    weird test failures, from redis response parsing errors deep in scredis.
+    These errors have never happened when running the app,
+    either on heroku or locally. Investigate further.
+    --Hypothesis: generating pubsub messages that get parsed weirdly when no clients are active
  */
 
 
