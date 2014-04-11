@@ -116,7 +116,6 @@ function AppCtrl($scope, $http, ChatService) {
   }
 
 
-
   $scope.users = {};
 
   $scope.messages = {};

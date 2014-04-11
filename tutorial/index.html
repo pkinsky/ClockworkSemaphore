@@ -1,8 +1,81 @@
 <div>
 <h2>
-test header
+Controllers and Views
 </h2>
 
 
-test div
+<h3>Main page</h3>
+<br>
+Users can view their personal feed, view the global feed, post tweets and favorite/unfavorite other users from here. This page is made up of several components.
+<ul>
+<li>
+<a href="#code/app/views/app/index.scala.html" class="shortcut">index.scala.html</a>:
+    presentation layer of angularJS single-page app.
+</li>
+<li>
+<a href="#code/public/javascripts/main.js" class="shortcut">main.js</a>:
+    angular controller which handles client side of websocket connection
+</li>
+<li>
+<a href="#code/app/actors/SocketActor.scala" class="shortcut">SocketActor.scala</a>:
+    actor which handles server side of websocket connection, uses Redis PubSub to listen for tweets of interest to users with websocket connections.
+</li>
+<li>
+<a href="#code/app/controllers/App.scala" class="shortcut">App.scala</a>:
+    controller which constructs and serves the main page to authorized users
+</li>
+<li>
+<a href="#code/app/controllers/Websocket.scala" class="shortcut">Websocket.scala</a>:
+    controller which provides a websocket connection to authorized users.
+</li>
+<li>
+<a href="#code/app/controllers/Api.scala" class="shortcut">Api.scala</a>:
+    controller which handles API requests from authorized users to follow and un-follow other users.
+</li>
+<li>
+<a href="#code/app/controllers/Auth.scala" class="shortcut">Auth.scala</a>:
+    Request builders used to ensure only authorized users can access the above components. Encapsulates authorization logic
+</li>
+</ul>
+
+
+<h3>Landing page</h3><br>
+<ul>
+<li>
+Users without authorization cookies are redirected to this static page, where they can either login to their existing accounts or register a new account.
+</li>
+<li>
+<a href="#code/app/controllers/LandingPage.scala" class="shortcut">LandingPage.scala</a>
+    controller which handles login, logout and registration
+</li>
+<li>
+<a href="#code/app/views/app/landing.scala.html" class="shortcut">landing.scala.html</a>
+    static html page which handles login and registration.
+</li>
+</ul>
+
+
+</div>
+
+
+<div>
+<h2>
+Redis
+</h2>
+
+<!--
+
+QUICK overview as above of redis components, interactions with redis <- actually no, files should be commented enough that not needed
+
+files:
+redis schema
+redis config
+redisService
+
+
+GOAL: comment/make self-evident code such that an overview of what file handles what is sufficient. scaladoc all non-trivial methods (or just all methods)
+      this is a template/tutorial, excessive comments are no sin
+-->
+
+
 </div>
