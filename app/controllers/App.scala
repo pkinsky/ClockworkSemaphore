@@ -21,10 +21,13 @@ import scala.util.{Failure, Success}
 import akka.event.slf4j.Logger
 
 /**
- * Controller for the single-page app.
+ * Controller for the main page
  */
 object App extends Controller  {
 
+  /**
+   * Serves up the main page to authorized users, provisioned with the current user's UserId and username
+   */
   def index = Authenticated.async {
     implicit request => {
       val user_id = request.user

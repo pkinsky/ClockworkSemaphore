@@ -48,13 +48,20 @@ object Utils {
       Future.failed(Predicate(fail))
     }
 
-  //errors whose reason can be displayed client-side as is. Ex: username taken
+
+  /**
+   * errors whose cause can be displayed client-side. Ex: username already in use, invalid password, etc.
+   * @param reason reason for failing which can be displayed to users
+   */
   case class UserVisibleError(reason: String) extends Exception(s"user visible error:: $reason")
 
-  //generic internal errors that should not be displayed client-side
+  /**
+   * generic internal errors that should not be displayed client-side
+   * @param reason reason for failure
+   */
   case class Predicate(reason: String) extends Exception(s"predicate failed:: $reason")
 
-  //this allows us to use scalaz's applicative syntax to dispatch multiple futures concurrently
+  // this typeclass definition allows us to use scalaz's applicative syntax to dispatch multiple futures concurrently
   implicit def FutureApplicative(implicit executor: ExecutionContext) = new Applicative[Future] {
     def point[A](a: => A) = Future(a)
     def ap[A,B](fa: => Future[A])(f: => Future[A => B]) =

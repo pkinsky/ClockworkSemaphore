@@ -8,9 +8,9 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
 
-
 trait RedisConfig {
 
+  // attempt to fetch redis configuration info from redis-to-go-specific environment variable
   private val redisUri: Option[URI] = sys.env.get("REDISTOGO_URL").map(new URI(_))
 
     /** calling this results in dooooom! DOOOOOM!
@@ -36,10 +36,10 @@ trait RedisConfig {
       .withValue("client", ConfigValueFactory.fromMap(Map("tries"->5)))
   }
 
+
   protected lazy val redis = Redis(config)
 
   def getClient = Client(config)
-
 }
 
 
