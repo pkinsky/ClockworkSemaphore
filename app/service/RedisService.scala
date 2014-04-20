@@ -22,6 +22,15 @@ import entities._
  */
 object RedisService extends RedisConfig with Logging {
 
+  //small page size to demonstrate pagination
+  val page_size = 10
+
+
+  /**
+   * Load a post
+   * @param post_id the post id to load
+   * @return (Future of) Some message if the given post_id maps to an actual message else None
+   */
     def load_post(post_id: PostId): Future[Option[Msg]] = {
       for {
         map <- redis.hmGetAsMap[String](RedisSchema.post_info(post_id))("timestamp", "author", "body")
@@ -34,15 +43,26 @@ object RedisService extends RedisConfig with Logging {
       }
     }
 
-    //load a sequence of posts, returning all that exist and omiting those which don't
+
+  /**
+   * Load a series of posts
+   * @param post_ids sequence of post ids to load
+   * @return (Future of) messages
+   */
     def load_posts(post_ids: Seq[PostId]): Future[Seq[Msg]] = {
       for {
         msgs <- Future.sequence(post_ids.map(load_post))
-      } yield msgs.collect {case Some(msg) => msg}
+      } yield msgs.collect {case Some(msg) => msg} //filter out posts that have been deleted
     }
 
 
-    def save_post(post_id: PostId, msg: Msg): Future[Unit] =
+  /**
+   * Write a Message to Redis
+   * @param post_id post id of message being saved
+   * @param msg message to save
+   * @return (Future of) Unit
+   */
+    private def save_post(post_id: PostId, msg: Msg): Future[Unit] =
       redis.hmSetFromMap(RedisSchema.post_info(post_id), Map(
         "timestamp" -> msg.timestamp,
         "author" -> msg.uid.uid,
@@ -50,7 +70,13 @@ object RedisService extends RedisConfig with Logging {
       ))
 
 
-    def distribute_post(from: UserId, post_id: PostId): Future[Unit] =
+  /**
+   * Add a post's id to the feed of its author and her followers
+   * @param from author of the post
+   * @param post_id id of the post
+   * @return (Future of) Unit
+   */
+    private def distribute_post(from: UserId, post_id: PostId): Future[Unit] =
       for {
         recipients <- followed_by(from)
         distribution = for (recipient <- recipients + from) yield {
@@ -64,6 +90,14 @@ object RedisService extends RedisConfig with Logging {
         _ <- Future.sequence(distribution)
       } yield ()
 
+
+  /**
+   * Post a message by a given user with a given body. Reserves a global post id
+   * and distributes that post id to the feeds of all followers of this user.
+   * @param author author of the post
+   * @param body body of the post
+   * @return (Future of) the id of the post after it is created
+   */
     def post_message(author: UserId, body: String): Future[PostId] = {
 
       val timestamp = System.currentTimeMillis
@@ -86,21 +120,33 @@ object RedisService extends RedisConfig with Logging {
     }
 
 
-
+  /**
+   * Get the set of users which are following this user.
+   * @param uid user being followed
+   * @return users following user
+   */
     def is_following(uid: UserId): Future[Set[UserId]] =
       for {
         following <- redis.sMembers(RedisSchema.is_following(uid))
       } yield following.map( id => UserId(id) )
 
+  /**
+   * Get the set of users followed by this user
+   * @param uid user doing the following
+   * @return users followed by user
+   */
     def followed_by(uid: UserId): Future[Set[UserId]] =
       for {
         followers <- redis.sMembers(RedisSchema.followed_by(uid))
       } yield followers.map( id => UserId(id) )
 
 
-
-    //todo: don't name vals uid, the type already states that they are one!
-    //idempotent, this function is a no-op if uid is already followed by to_follow
+  /**
+   * Start following a user
+   * @param uid user doing the following
+   * @param to_follow user being followed
+   * @return (Future of) Unit
+   */
     def follow_user(uid: UserId, to_follow: UserId): Future[Unit] = {
       println(s"follow_user($uid: UserId, $to_follow: UserId)")
       for {
@@ -110,7 +156,12 @@ object RedisService extends RedisConfig with Logging {
       } yield ()
     }
 
-    //idempotent, this function is a no-op if uid is not already followed by to_unfollow
+  /**
+   * Stop following a user
+   * @param uid user doing the unfollowing
+   * @param to_unfollow user being unfollowed
+   * @return (Future of) Unit
+   */
     def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
       println(s"follow_user($uid: UserId, $to_unfollow: UserId)")
       for {
@@ -121,7 +172,12 @@ object RedisService extends RedisConfig with Logging {
     }
 
 
-    //returns user id if successful. note: distinction between wrong password and nonexistent username? nah, maybe later
+  /**
+   * Attempt to log a user in with the provided credentials
+   * @param username username to login with
+   * @param password password to login with
+   * @return (Future of) the UID assigned existing user with the above credentials
+   */
     def login_user(username: String, password: String): Future[UserId] = {
       for {
         raw_uid_opt <- redis.get(RedisSchema.username_to_id(username))
@@ -133,22 +189,28 @@ object RedisService extends RedisConfig with Logging {
     }
 
 
-    /*
-    todo: clean up
-     */
+  /**
+   * Attempt to register a user with the provided credentials
+   * @param username username to register with
+   * @param password password to register with
+   * @return (Future of) a fresh UID assigned to a new user with the above credentials
+   */
     def register_user(username: String, password: String): Future[UserId] = {
-
       val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
 
       for {
         raw_uid <- redis.incr(RedisSchema.next_user_id).map(_.toString)
         uid = UserId(raw_uid)
-        // todo: check username first, only then reserve new user id
         _ <- set_username(uid, username)
         _ <- redis.set(RedisSchema.user_password(uid), hashedPassword)
       } yield uid
     }
 
+  /**
+   * Generate and register a new auth token for a given user
+   * @param uid user to generate an auth token for
+   * @return (Future of) an auth token
+   */
     def gen_auth_token(uid: UserId): Future[AuthToken] = {
       val auth = AuthToken( new scala.util.Random().nextString(15) )
       for {
@@ -158,6 +220,11 @@ object RedisService extends RedisConfig with Logging {
     }
 
 
+  /**
+   * Get the user associated with some auth token
+   * @param auth an auth token
+   * @return associated user
+   */
     def user_from_auth_token(auth: AuthToken): Future[UserId] = {
       for {
         raw_uid_opt <- redis.get(RedisSchema.auth_user(auth))
@@ -168,9 +235,14 @@ object RedisService extends RedisConfig with Logging {
       } yield uid
     }
 
-    val page_size = 5 //small page size to demonstrate pagination
 
-    //given a user, get all posts routed to their feed
+  /**
+   * Given a user, fetch posts routed to their feed
+   * (represented as a linked list, random access to a node requires traversing all precursors of that node.)
+   * @param user_id a user
+   * @param page pages to offset the fetched slice of the feed by
+   * @return (Future of) posts in the requested page of the given user's feed
+   */
     def get_user_feed(user_id: UserId, page: Int): Future[Seq[PostId]] = {
       val start = page_size * page
       val end = start + page_size
@@ -178,13 +250,24 @@ object RedisService extends RedisConfig with Logging {
     }
 
 
-    //get from global feed
+  /**
+   * Fetch posts routed to the global feed
+   * (represented as a linked list, random access to a node requires traversing all precursors of that node.)
+   * @param page pages to offset the fetched slice of the feed by
+   * @return (Future of) posts in the requested page of the global feed
+   */
     def get_global_feed(page: Int): Future[Seq[PostId]] = {
       val start = page_size * page
       val end = start + page_size
       redis.lRange(RedisSchema.global_timeline, start, end).map(_.map(PostId(_)))
     }
 
+
+  /**
+   * Fetch a user's username
+   * @param uid some user
+   * @return (Future of) this user's username
+   */
     def get_user_name(uid: UserId): Future[String] =
       for {
         username_opt <- redis.get[String](RedisSchema.id_to_username(uid))
@@ -192,18 +275,24 @@ object RedisService extends RedisConfig with Logging {
       } yield username
 
 
-    private def set_username(uid: UserId, username: String) = {
+  /**
+   * Reserve a username for a user. Checks availability of that username
+   * @param uid some user
+   * @param username username to register for the given user
+   * @return (Future of) Unit
+   */
+    private def set_username(uid: UserId, username: String): Future[Unit] =
       for {
         uid_for_username <- redis.get(RedisSchema.username_to_id(username))
         _ <- match_or_else(uid_for_username , s"user $uid attempting to reserve taken username $username, already in use by user with uid $uid_for_username"){
           case None =>
         }
-        // todo: in cases where actions are taken simultaneously, have a separate function (eg: set A => B, B => A)
         _ <- (redis.set(RedisSchema.id_to_username(uid), username) |@|
-          redis.set(RedisSchema.username_to_id(username), uid.uid)){ (_,_) => ()}
+              redis.set(RedisSchema.username_to_id(username), uid.uid)){
+                (_,_) => ()
+              }
       } yield ()
 
-    }
 
 }
 
