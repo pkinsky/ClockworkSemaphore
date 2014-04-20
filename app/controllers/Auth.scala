@@ -20,9 +20,18 @@ import utils.Logging
  */
 object Auth {
 
+  /**
+   * @param req request header
+   * @return Some auth token extracted from `req` or None
+   */
   def get_auth_token(req: RequestHeader) =
     req.session.get("login").map{t => AuthToken(t)}
 
+  /**
+   * Extract an auth token from a request header and fetch the corresponding UserId from Redis
+   * @param req request header
+   * @return Future of UserId extracted from request header
+   */
   def authenticateRequest(req: RequestHeader): Future[UserId] = {
     for {
       token <- match_or_else(get_auth_token(req), "auth string not found"){ case Some(t) => t}
@@ -32,17 +41,17 @@ object Auth {
 
 }
 
-//Authenticate or return 401 unauthorized. For use with APIs
+// Authenticate or return 401 unauthorized. For use with API calls where redirecting is not desired
 object AuthenticatedAPI extends FutureAuthenticatedBuilder (
   onUnauthorized = (requestHeader, err) => Unauthorized
 )
 
-//Authenticate or redirect to the landing page
+// Authenticate or redirect to the landing page
 object Authenticated extends FutureAuthenticatedBuilder(
   onUnauthorized = (requestHeader, err) => Ok(views.html.app.landing(err.map(_.toString)))
 )
 
-//Utility class for building authenticated requests. Based on AuthenticatedBuilder
+// Utility class for building authenticated requests. Based on AuthenticatedBuilder.
 class FutureAuthenticatedBuilder(onUnauthorized: (RequestHeader, Option[Throwable]) => SimpleResult)
   extends ActionBuilder[({ type R[A] = AuthenticatedRequest[A, UserId] })#R] with Logging {
 

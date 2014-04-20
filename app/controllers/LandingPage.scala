@@ -16,38 +16,16 @@ import akka.event.slf4j.Logger
 
 /**
  * Landing page. Unauthenticated users are redirected here.
- * Handles login, registration, logout flow
+ * Handles login, registration, logout
  */
 object LandingPage extends Controller {
 
-  val alphanumeric: Set[Char] = (('0' to '9') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
-
-  val username_length = (5 to 15)
-  val password_length = (5 to 15)
-
-  //todo: move sizes to config file or something
-  def valid_username(username: String): Boolean =
-    username_length.contains(username.length) &&
-    username.forall( c => alphanumeric.contains(c) )
-
-  def valid_password(password: String): Boolean =
-    password_length.contains(password.length)
 
 
   /**
-   * check that credentials are of valid form before going to the database.
-   * @param username username string
-   * @param password password string
-   * @return
+   * handles POST requests containing a form-encoded username and password. Attempts to login using those credentials,
+   * redirecting to the main page with an authentication token set if successful or else to the landing page
    */
-  private def validate_credentials(username: String, password: String): Future[Unit] =
-    for{
-      _ <- predicate(valid_password(password), UserVisibleError(s"invalid password, should have been caught by client-side validation"))
-      _ <- predicate(valid_username(username), UserVisibleError(s"invalid username $username, should have been caught by client-side validation"))
-    } yield ()
-
-
-
   def login = Action.async{
     implicit request =>
 
@@ -67,27 +45,23 @@ object LandingPage extends Controller {
 
   }
 
+  /**
+   * Serves up the landing page
+   */
   def landing = Action {
     Ok( views.html.app.landing(None) )
   }
 
 
+
+
+
+
+
   /**
-   * parses a request with a form url encoded body
-   * @param request the request
-   * @return Some (username, password) tuple retrieved from request or None
+   * handles POST requests containing a form-encoded username and password. Attempts to register using those credentials,
+   * redirecting to the main page with an authentication token set if successful or else to the landing page
    */
-  def parse_form(request: Request[AnyContent]): Option[(String, String)] =
-    for {
-      formInfo <- request.body.asFormUrlEncoded
-      usernames <- formInfo.get("username")
-      username <- usernames.headOption
-      passwords <- formInfo.get("password")
-      password <- passwords.headOption
-    } yield (username, password)
-
-
-
   def register = Action.async{
     implicit request =>
 
@@ -108,6 +82,51 @@ object LandingPage extends Controller {
       }
   }
 
-  //logout, removing session cookie
+  /**
+   * logout, removing session auth token
+   */
   def logout() = Action { Redirect(routes.App.index).withSession() }
+
+
+  // set of valid characters for usernames
+  val alphanumeric: Set[Char] = (('0' to '9') ++ ('a' to 'z') ++ ('A' to 'Z')).toSet
+
+  // ranges representing valid username, password length. (Longer passwords should probably be allowed in a real app)
+  val username_length = (5 to 15)
+  val password_length = (5 to 15)
+
+  def valid_username(username: String): Boolean =
+    username_length.contains(username.length) &&
+      username.forall( c => alphanumeric.contains(c) )
+
+  def valid_password(password: String): Boolean =
+    password_length.contains(password.length)
+
+
+  /**
+   * check that credentials are of valid form before going to the database.
+   * @param username username string
+   * @param password password string
+   * @return Future(Success(Unit) if successful or Future(Failure(...)) otherwise
+   */
+  // todo: fold into extraction of credentials from form. will need to change parse_form return type from Option to Future
+  private def validate_credentials(username: String, password: String): Future[Unit] =
+    for{
+      _ <- predicate(valid_password(password), UserVisibleError(s"invalid password, should have been caught by client-side validation"))
+      _ <- predicate(valid_username(username), UserVisibleError(s"invalid username $username, should have been caught by client-side validation"))
+    } yield ()
+
+  /**
+   * parses a request with a form url encoded body. Performs basic validation of username and password.
+   * @param request the request
+   * @return Some (username, password) tuple retrieved from request or None
+   */
+  def parse_form(request: Request[AnyContent]): Option[(String, String)] =
+    for {
+      formInfo <- request.body.asFormUrlEncoded
+      usernames <- formInfo.get("username")
+      username <- usernames.headOption
+      passwords <- formInfo.get("password")
+      password <- passwords.headOption
+    } yield (username, password)
 }

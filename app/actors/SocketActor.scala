@@ -39,7 +39,7 @@ class SocketActor extends Actor with Logging {
 
   var webSockets: Map[UserId, UserChannel] = Map.empty
 
-  //akka actors are single threaded, so we can grab our own redis client to handle subscriptions
+  //akka actors are single threaded, so we can grab our own (non-thread safe) redis client to handle subscriptions
   val client = RedisService.getClient
 
   override def postStop(): Unit = client.quit()
@@ -141,9 +141,13 @@ class SocketActor extends Actor with Logging {
 
 
 /**
- * Companion object of SocketActor. holds all messages accepted by SocketActor
+ * Companion object of SocketActor. holds messages accepted by SocketActor
  */
 object SocketActor {
+
+  /**
+   * Marker trait for messages accepted by this actor
+   */
   sealed trait SocketMessage
 
   /**

@@ -41,5 +41,4 @@ object RedisSchema {
 
   //map containing attributes of post with post_id
    def post_info(post: PostId) = s"post:${post.pid}:info"
-
 }
