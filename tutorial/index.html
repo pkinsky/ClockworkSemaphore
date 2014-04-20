@@ -1,19 +1,15 @@
 
-<!--
-todo: add initial page echoing app description, with list of pages to follow. Also link to redis case study
-
-todo: state that tutorial pages are starting points, bulk of documentation is inline in files linked from tutorial pages
--->
-
 <div>
 <h2>Introduction</h2>
 
-This project is an implementation of the redis-based twitter clone described in <a href="http://redis.io/topics/twitter-clone">this case study</a>
+This project is an implementation of the Redis-based Twitter clone described in <a href="http://redis.io/topics/twitter-clone">this case study</a>
 <br>
 <br>
 <p>
-"In this article I'll describe the design and implementation of a simple clone of Twitter written using PHP with Redis as the only database. The programming community has traditionally considered key-value stores as a special purpose database that couldn't be used as a drop in replacement for a relational database for the development of web applications. This article will try to correct this impression.
-Our Twitter clone, called Retwis, is structurally simple, has very good performance, and can be distributed among any number of web and Redis servers with very little effort. You can find the source code here."
+<b>"</b> In this article I'll describe the design and implementation of a simple clone of Twitter written using PHP with Redis as the only database.
+The programming community has traditionally considered key-value stores as a special purpose database that couldn't be used as a drop in replacement
+for a relational database for the development of web applications. This article will try to correct this impression.
+Our Twitter clone, called Retwis, is structurally simple, has very good performance, and can be distributed among any number of web and Redis servers with very little effort. <b>"</b>
 </p>
 <br>
 <br>
@@ -36,23 +32,24 @@ Users can view their personal feed, view the global feed, post tweets and favori
 <ul>
 <li>
 <a href="#code/app/views/app/index.scala.html" class="shortcut">index.scala.html</a>:
-    presentation layer of angularJS single-page app.
+    presentation layer of the main page. Uses AngularJS bindings to encapsulate presentation logic.
 </li>
 <li>
 <a href="#code/public/javascripts/main.js" class="shortcut">main.js</a>:
-    angular controller which handles client side of websocket connection
+    AngularJS controller for the main page.
 </li>
 <li>
 <a href="#code/app/actors/SocketActor.scala" class="shortcut">SocketActor.scala</a>:
-    actor which handles server side of websocket connection, uses Redis PubSub to listen for tweets of interest to users with websocket connections.
+    Akka actor which handles the server side of the Websocket connection.
+    Uses Redis PubSub to listen for tweets of interest to users with active websocket connections.
 </li>
 <li>
 <a href="#code/app/controllers/App.scala" class="shortcut">App.scala</a>:
-    controller which constructs and serves the main page to authorized users
+    controller which constructs and serves the main page to authorized users.
 </li>
 <li>
 <a href="#code/app/controllers/Websocket.scala" class="shortcut">Websocket.scala</a>:
-    controller which provides a websocket connection to authorized users.
+    controller which provides a Websocket connection to authorized users.
 </li>
 <li>
 <a href="#code/app/controllers/Api.scala" class="shortcut">Api.scala</a>:
@@ -60,7 +57,7 @@ Users can view their personal feed, view the global feed, post tweets and favori
 </li>
 <li>
 <a href="#code/app/controllers/Auth.scala" class="shortcut">Auth.scala</a>:
-    Request builders used to ensure only authorized users can access the above components. Encapsulates authorization logic
+    Request builders used to ensure only authorized users can access the above components. Encapsulates authorization logic.
 </li>
 </ul>
 </div>
@@ -73,11 +70,11 @@ Users without authorization cookies are redirected to this static page, where th
 <br>
 <ul>
 <li>
-<a href="#code/app/controllers/LandingPage.scala" class="shortcut">LandingPage.scala</a>
-    controller which handles login, logout and registration
+<a href="#code/app/controllers/LandingPage.scala" class="shortcut">LandingPage.scala</a>:
+    controller which handles login, logout and registration.
 </li>
 <li>
-<a href="#code/app/views/app/landing.scala.html" class="shortcut">landing.scala.html</a>
+<a href="#code/app/views/app/landing.scala.html" class="shortcut">landing.scala.html</a>:
     static html page which handles login and registration.
 </li>
 </ul>
@@ -91,19 +88,21 @@ Users without authorization cookies are redirected to this static page, where th
 Redis
 </h2>
 
-<!--
+The Redis service provides nonblocking interaction with Redis.
 
-QUICK overview as above of redis components, interactions with redis <- actually no, files should be commented enough that not needed
-
-files:
-redis schema
-redis config
-redisService
-
-
-GOAL: comment/make self-evident code such that an overview of what file handles what is sufficient. scaladoc all non-trivial methods (or just all methods)
-      this is a template/tutorial, excessive comments are no sin
--->
-
+<ul>
+    <li>
+        <a href="#code/app/service/RedisService.scala" class="shortcut">RedisService.scala</a>:
+        Global object which encapsulates interaction with Redis. All methods are fully nonblocking.
+    </li>
+    <li>
+        <a href="#code/app/service/RedisSchema.scala" class="shortcut">RedisSchema.scala</a>:
+        Base trait containing strings used as Redis keys and functions for converting domain objects (UserId, PostId, etc.) into Redis keys.
+    </li>
+    <li>
+        <a href="#code/app/service/RedisConfig.scala" class="shortcut">RedisConfig.scala</a>:
+        Base trait which encapsulates Redis configuration and initialization of Redis clients.
+    </li>
+</ul>
 
 </div>
