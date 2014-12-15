@@ -1,9 +1,0 @@
-Play 2.2 application
-=====================================
-- Play framework implementation of the redis-backed twitter clone described in this case study http://redis.io/topics/twitter-clone
-- Reactive single-page app using angularJS and websockets.
-- Websocket io handled server-side by Akka actors
-- Backed by redis, an in-memory key value store
-- Fully nonblocking, outside of play framework and redis client internals
-- Hosted on Heroku at https://clockwork-semaphore.herokuapp.com/
-
