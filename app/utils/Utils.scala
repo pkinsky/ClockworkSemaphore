@@ -14,8 +14,7 @@ object Utils {
    * @param fail the message to fail with if condition is false
    * @return an empty preevaluated future
    */
-  def predicate(condition: Boolean, fail: String): Future[Unit] =
-    if (condition) Future.successful(Unit) else Future.failed(Predicate(fail))
+  def predicate(condition: Boolean, fail: String): Future[Unit] = predicate(condition, Predicate(fail))
 
   /**
    * Predicate is used in place of an if statement in for comprehensions over futures.
