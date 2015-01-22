@@ -24,7 +24,7 @@ object Auth {
    * @param req request header
    * @return Some auth token extracted from `req` or None
    */
-  def get_auth_token(req: RequestHeader) =
+  def get_auth_token(req: RequestHeader): Option[AuthToken] =
     req.session.get("login").map{t => AuthToken(t)}
 
   /**
@@ -55,13 +55,7 @@ object Authenticated extends FutureAuthenticatedBuilder(
 class FutureAuthenticatedBuilder(onUnauthorized: (RequestHeader, Option[Throwable]) => SimpleResult)
   extends ActionBuilder[({ type R[A] = AuthenticatedRequest[A, UserId] })#R] with Logging {
 
-  def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A, UserId]) => Future[SimpleResult]) =
-    authenticate(request, block)
-
-  /**
-   * Authenticate the given block.
-   */
-  def authenticate[A](request: Request[A], block: (AuthenticatedRequest[A, UserId]) => Future[SimpleResult]) = {
+  def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A, UserId]) => Future[SimpleResult]) = {
     (for {
       user <- Auth.authenticateRequest(request)
       r <- block(new AuthenticatedRequest(user, request)).recover{ case ex =>

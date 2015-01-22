@@ -7,3 +7,4 @@ object User {
 }
 
 case class User(uid: String, username: String, isFollowing: Boolean) extends JsonMessage
+

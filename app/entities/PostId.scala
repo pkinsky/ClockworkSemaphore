@@ -11,3 +11,4 @@ object PostId{
 
 //Post Id wrapper class.
 case class PostId(pid: String) extends AnyVal
+

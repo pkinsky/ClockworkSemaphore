@@ -30,9 +30,8 @@ object API extends Controller with Logging {
         _ <- RedisService.follow_user(user_id, UserId(to_follow))
       } yield Accepted
 
-      r.onComplete{
-        case Failure(t) => log.error(s"unfollow failed:\n$t")
-        case Success(_) =>
+      r.onFailure{
+        case t => log.error(s"unfollow failed:\n$t")
       }
 
       r
@@ -51,9 +50,8 @@ object API extends Controller with Logging {
         _ <- RedisService.unfollow_user(user_id, UserId(to_unfollow))
       } yield Accepted
 
-      r.onComplete{
-        case Failure(t) => log.error(s"unfollow failed:\n$t")
-        case Success(_) =>
+      r.onFailure{
+        case t => log.error(s"unfollow failed:\n$t")
       }
 
       r

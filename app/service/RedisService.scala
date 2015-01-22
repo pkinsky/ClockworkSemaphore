@@ -148,7 +148,7 @@ object RedisService extends RedisConfig with Logging {
    * @return (Future of) Unit
    */
     def follow_user(uid: UserId, to_follow: UserId): Future[Unit] = {
-      println(s"follow_user($uid: UserId, $to_follow: UserId)")
+      log.info(s"$uid following $to_follow")
       for {
         _ <- predicate(uid =/= to_follow, s"user $uid just tried to follow himself! probably a client-side bug")
         _ <- redis.sAdd(RedisSchema.is_following(uid), to_follow.uid)
@@ -163,7 +163,7 @@ object RedisService extends RedisConfig with Logging {
    * @return (Future of) Unit
    */
     def unfollow_user(uid: UserId, to_unfollow: UserId): Future[Unit] = {
-      println(s"follow_user($uid: UserId, $to_unfollow: UserId)")
+      log.info(s"$uid unfollowing $to_unfollow)")
       for {
         _ <- predicate(uid =/= to_unfollow, s"user $uid just tried to unfollow himself! probably a client-side bug")
         _ <- (redis.sRem(RedisSchema.is_following(uid), to_unfollow.uid) |@|
@@ -295,19 +295,4 @@ object RedisService extends RedisConfig with Logging {
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

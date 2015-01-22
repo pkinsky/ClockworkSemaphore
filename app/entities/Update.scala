@@ -15,3 +15,4 @@ object Update {
 case class Update(feed: String, users: Seq[User], messages: Seq[Msg]) extends JsonMessage {
   def asJson = Json.toJson(this)
 }
+

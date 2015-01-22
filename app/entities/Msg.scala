@@ -29,3 +29,4 @@ object Msg {
 }
 
 case class Msg(post_id: PostId, timestamp: Long, uid: UserId, body: String) extends JsonMessage
+

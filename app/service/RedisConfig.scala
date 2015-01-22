@@ -13,9 +13,9 @@ trait RedisConfig {
   // attempt to fetch redis configuration info from redis-to-go-specific environment variable
   private val redisUri: Option[URI] = sys.env.get("REDISTOGO_URL").map(new URI(_))
 
-    /** calling this results in dooooom! DOOOOOM!
-     *  (flushes current redis config. Do not call from non-test code)
-     */
+  /** calling this results in dooooom! DOOOOOM!
+  *  (flushes current redis config. Do not call from non-test code)
+  */
   def flushall = redis.flushAll()
 
   val defaultConfig = ConfigFactory.empty

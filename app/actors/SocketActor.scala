@@ -101,9 +101,8 @@ class SocketActor extends Actor with Logging {
           send(user_id)(update)
         }
 
-        r.onComplete{
-          case Failure(t) => log.error(s"failed to load posts $posts because $t")
-          case Success(_) =>
+        r.onFailure{
+          case t => log.error(s"failed to load posts $posts because $t")
         }
 
     }
@@ -115,9 +114,8 @@ class SocketActor extends Actor with Logging {
         post_id <- RedisService.post_message(from, message)
       } yield ()
 
-      r.onComplete{
-        case Failure(t) => log.error("posting msg failed: " + t)
-        case Success(_) =>
+      r.onFailure{
+        case t => log.error("posting msg failed: " + t)
       }
     }
 
@@ -178,3 +176,4 @@ object SocketActor {
    */
   case class SocketClosed(uid: UserId) extends SocketMessage
 }
+

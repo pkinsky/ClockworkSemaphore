@@ -62,8 +62,8 @@ object Utils {
 
   // this typeclass definition allows us to use scalaz's applicative syntax to dispatch multiple futures concurrently
   implicit def FutureApplicative(implicit executor: ExecutionContext) = new Applicative[Future] {
-    def point[A](a: => A) = Future(a)
-    def ap[A,B](fa: => Future[A])(f: => Future[A => B]) =
+    def point[A](a: => A): Future[A] = Future(a)
+    def ap[A,B](fa: => Future[A])(f: => Future[A => B]): Future[B] =
       (f zip fa) map { case (f1, a1) => f1(a1) }
   }
 }
