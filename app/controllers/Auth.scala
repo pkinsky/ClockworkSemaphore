@@ -1,18 +1,18 @@
 package controllers
 
-import play.api.mvc._
+import akka.event.slf4j.Logger
 import entities.{UserId, AuthToken}
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.mvc._
+import play.api.mvc.Results.{Unauthorized, Ok}
+import play.api.mvc.Security.AuthenticatedRequest
+import play.api.mvc.SimpleResult
 import scala.concurrent.{ExecutionContext, Future}
-import utils.Utils._
+import scala.Some
 import scala.Some
 import service.RedisService
-import play.api.mvc.Security.AuthenticatedRequest
-import akka.event.slf4j.Logger
-import scala.Some
-import play.api.mvc.SimpleResult
-import play.api.mvc.Results.{Unauthorized, Ok}
-import play.api.libs.concurrent.Execution.Implicits._
 import utils.Logging
+import utils.Utils._
 
 
 /**

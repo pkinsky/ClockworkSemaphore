@@ -1,34 +1,25 @@
 package actors
 
 import akka.actor.{Props, Actor}
-
-import play.api.libs.iteratee.{Concurrent, Enumerator}
-
-import play.api.libs.iteratee.Concurrent.Channel
-import play.api.Logger
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-
-import scala.util.{ Success, Failure }
-import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.concurrent.Akka
-import scala.concurrent.{ExecutionContext, Future}
-import play.api.Play.current
-import service._
-
-import scredis.pubsub.{Message => RMessage}
-
-import utils.{Utils, Logging}
-import Utils._
-
-
-import scala.util.Failure
-import play.api.libs.json._
-import scala.util.Success
-
-import scalaz._
-
 import entities._
+import play.api.libs.concurrent.Akka
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.functional.syntax._
+import play.api.libs.iteratee.Concurrent.Channel
+import play.api.libs.iteratee.{Concurrent, Enumerator}
+import play.api.libs.json._
+import play.api.libs.json._
+import play.api.Logger
+import play.api.Play.current
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.{ Success, Failure }
+import scalaz._
+import scredis.pubsub.{Message => RMessage}
+import service._
+import utils.Logging
+import utils.Utils._
 
 
 

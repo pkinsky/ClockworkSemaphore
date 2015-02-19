@@ -1,9 +1,9 @@
 package entities
 
 import play.api.libs.json._
+import play.api.libs.json.JsNumber
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
-import play.api.libs.json.JsNumber
 
 object Msg {
 

@@ -1,11 +1,11 @@
 package service
 
 import com.typesafe.config.{ConfigValueFactory, ConfigFactory}
-import scredis.{Redis, Client}
 import java.net.URI
-
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+import scredis.{Redis, Client}
+import scala.concurrent.Future
 
 
 trait RedisConfig {
@@ -16,7 +16,7 @@ trait RedisConfig {
   /** calling this results in dooooom! DOOOOOM!
   *  (flushes current redis config. Do not call from non-test code)
   */
-  def flushall = redis.flushAll()
+  def flushall: Future[Unit] = redis.flushAll()
 
   val defaultConfig = ConfigFactory.empty
 
@@ -39,7 +39,7 @@ trait RedisConfig {
 
   protected lazy val redis = Redis(config)
 
-  def getClient = Client(config)
+  def getClient: Client = Client(config)
 }
 
 

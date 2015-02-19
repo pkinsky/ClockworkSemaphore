@@ -1,17 +1,17 @@
 package controllers
 
+import akka.event.slf4j.Logger
 import entities.{AuthToken, UserId}
-import scala.util.{Success, Failure}
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.{Controller, RequestHeader}
 import scala.concurrent.Future
-import utils.Utils._
-import scala.util.Success
-import scala.util.Failure
 import scala.Some
+import scala.util.Failure
+import scala.util.Success
+import scala.util.{Success, Failure}
 import service.RedisService
-import play.api.libs.concurrent.Execution.Implicits._
-import akka.event.slf4j.Logger
 import utils.Logging
+import utils.Utils._
 
 
 /**

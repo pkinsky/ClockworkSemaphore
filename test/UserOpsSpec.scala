@@ -1,7 +1,7 @@
 import entities.Msg
-import service.RedisService
-import scala.concurrent.ExecutionContext.Implicits.global
 import play.api.test._
+import scala.concurrent.ExecutionContext.Implicits.global
+import service.RedisService
 
 
 /*

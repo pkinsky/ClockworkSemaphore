@@ -1,20 +1,15 @@
 package service
 
-
-import java.lang.Long.parseLong
-
-import scala.concurrent.Future
-import scalaz.syntax.applicative.ToApplyOps
-
-import play.api.libs.concurrent.Execution.Implicits._
-import  scalaz._
-import  Scalaz._
-
-import org.mindrot.jbcrypt.BCrypt
-
-import utils.{Logging, Utils}
-import Utils._
 import entities._
+import java.lang.Long.parseLong
+import org.mindrot.jbcrypt.BCrypt
+import play.api.libs.concurrent.Execution.Implicits._
+import scala.concurrent.Future
+import scalaz._
+import Scalaz._
+import scalaz.syntax.applicative.ToApplyOps
+import utils.Logging
+import utils.Utils._
 
 /**
  * Global object, handles actual interaction with Redis.
@@ -25,6 +20,11 @@ object RedisService extends RedisConfig with Logging {
   //small page size to demonstrate pagination
   val page_size = 10
 
+  //maximum number of tweets in global feed
+  val global_feed_max_messages = 1000
+
+  //length of auth token string
+  val auth_token_length = 15
 
   /**
    * Load a post
@@ -102,7 +102,7 @@ object RedisService extends RedisConfig with Logging {
 
       val timestamp = System.currentTimeMillis
 
-      def trim_global = redis.lTrim(RedisSchema.global_timeline,0,1000)
+      def trim_global = redis.lTrim(RedisSchema.global_timeline,0,global_feed_max_messages)
 
       def handle_post(post_id: PostId) = {
         log.info(s"handling post $post_id for $author with body $body")
@@ -212,7 +212,7 @@ object RedisService extends RedisConfig with Logging {
    * @return (Future of) an auth token
    */
     def gen_auth_token(uid: UserId): Future[AuthToken] = {
-      val auth = AuthToken( new scala.util.Random().nextString(15) )
+      val auth = AuthToken( new scala.util.Random().nextString(auth_token_length) )
       for {
         _ <- (redis.set(RedisSchema.user_auth(uid), auth.token) |@|
           redis.set(RedisSchema.auth_user(auth), uid.uid)){ (_, _) => () }

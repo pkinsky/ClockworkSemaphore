@@ -1,17 +1,17 @@
 package controllers
 
-import scala.concurrent.Future
-import utils.Utils._
-import play.api.mvc._
-import utils.Utils.UserVisibleError
-import scala.Some
-import utils.Utils.UserVisibleError
-import scala.Some
-import play.api.mvc.SimpleResult
-import service.RedisService
+import akka.event.slf4j.Logger
 import akka.event.slf4j.Logger
 import play.api.libs.concurrent.Execution.Implicits._
-import akka.event.slf4j.Logger
+import play.api.mvc._
+import play.api.mvc.SimpleResult
+import scala.concurrent.Future
+import scala.Some
+import scala.Some
+import service.RedisService
+import utils.Utils._
+import utils.Utils.UserVisibleError
+import utils.Utils.UserVisibleError
 
 
 /**

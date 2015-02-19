@@ -39,7 +39,7 @@ object RedisSchema {
   //global unique user id, increment to get a new user id
    def next_user_id: String = "global:nextUserId"
 
-  //map containing attributes of post with post_id
+  //map containing attributes of post (post body, timestamp) with post_id
    def post_info(post: PostId): String = s"post:${post.pid}:info"
 }
 

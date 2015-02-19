@@ -1,24 +1,20 @@
-
 package controllers
 
+import actors._
+import akka.event.slf4j.Logger
+import entities._
+import play.api.libs.concurrent._
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.iteratee._
+import play.api.libs.iteratee.{Enumerator, Iteratee}
+import play.api.libs.json._
 import play.api.mvc._
 import play.api.mvc.Results._
-import play.api.libs.json._
-import play.api.libs.concurrent._
-import play.api.libs.iteratee._
-import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.iteratee.{Enumerator, Iteratee}
-
-import scala.concurrent.Future
-import actors._
-
 import play.api.Routes
-
-import service._
-import entities._
-import utils.Utils._
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
-import akka.event.slf4j.Logger
+import service._
+import utils.Utils._
 
 /**
  * Controller for the main page
